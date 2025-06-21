@@ -1,0 +1,47 @@
+## Игнорировать файлы сборки ##
+*.exe
+*.dll
+*.ilk
+*.lib
+*.exp
+*.pdb
+*.obj
+*.pch
+*.ipch
+*.iobj
+*.idb
+*.tlog
+*.log
+*.sln.iml
+
+## Игнорировать директории сборки ##
+[Bb]in/
+[Oo]bj/
+[Rr]elease/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Xx]64/
+[Xx]86/
+[Ii]ntermediate/
+[Oo]utput/
+bld/
+[Pp]ackages/
+
+## Специфичные для VS файлы ##
+.vs/
+.vscode/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.sdf
+*.opensdf
+*.db
+*.opendb
+
+## Прочие артефакты ##
+*.cache
+*.log
+Thumbs.db
+[Dd]esktop.ini
