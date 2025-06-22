@@ -1,8 +1,6 @@
 {
   "current_scene": "scene1",
-  "health": 100,
-  "max_health": 100,
-  "inventory": ["lasgun", "knife", "detonator", "melta_charge"],
+  "inventory": [ "lasgun", "knife", "detonator", "melta_charge" ],
   "flags": {
     "ready_for_character_creation": false,
     "bodies_inspected": false,
@@ -14,12 +12,11 @@
     "scene8_perception_critical": false,
     "scene8_stealth_auto": false
   },
-  "known_endings": [],
+  "unlocked_endings": [],
   "combat": {
     "current_enemy": null,
     "player_turn": true,
     "player_health": 100,
     "enemy_health": 0
-  },
-  "achievements": []
+  }
 } 

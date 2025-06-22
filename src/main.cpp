@@ -7,10 +7,6 @@ int main() {
     SetConsoleCP(CP_UTF8);
 
     try {
-        // Вывод текущей директории
-        std::cout << "Current working directory: "
-            << std::filesystem::current_path().string() << "\n";
-
         GameEngine game("src/data/");
         game.Run();
     }

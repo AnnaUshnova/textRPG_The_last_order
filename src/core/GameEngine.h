@@ -3,35 +3,26 @@
 
 #include "DataManager.h"
 #include "GameState.h"
+#include "SceneProcessor.h"
+#include "CombatProcessor.h"
+#include "CharacterCreator.h"
+#include "EndingProcessor.h"
 #include <string>
 
 class GameEngine {
 public:
-    explicit GameEngine(const std::string& data_path);
-    void Run();
+	explicit GameEngine(const std::string& data_path);
+	void Run();
 
 private:
-    enum class RollResult {
-        kCriticalSuccess,
-        kSuccess,
-        kFail,
-        kCriticalFail
-    };
+	void InitializeGameState();
 
-    void ProcessScene(const std::string& scene_id);
-    void ProcessCombat(const std::string& combat_id);
-    void ProcessEnding(const std::string& ending_id);
-    void ProcessCharacterCreation();
-
-    void ApplyEffects(const nlohmann::json& effects);
-    bool EvaluateCondition(const std::string& condition) const;
-    int CalculateStat(const std::string& stat_name) const;
-
-    RollResult RollCheck(const std::string& stat_name) const;
-    void ResolveCombatAction(const nlohmann::json& action);
-
-    DataManager data_;
-    GameState state_;
+	DataManager data_;
+	GameState state_;
+	SceneProcessor scene_processor_;
+	CombatProcessor combat_processor_;
+	CharacterCreator character_creator_;
+	EndingProcessor ending_processor_;
 };
 
 #endif  // RPG_GAME_ENGINE_H_

@@ -7,20 +7,27 @@
 #include <set>
 
 struct GameState {
-	std::string active_id;
-	std::string active_type;
+    // Текущий активный элемент
+    std::string active_id;
+    std::string active_type;  // "scene", "combat", "character", "ending"
 
-	std::unordered_map<std::string, bool> flags;
-	std::vector<std::string> inventory;
-	std::set<std::string> unlocked_endings;
+    // Динамическое состояние
+    std::unordered_map<std::string, bool> flags;
+    std::vector<std::string> inventory;
+    std::set<std::string> unlocked_endings;
 
-	std::unordered_map<std::string, int> stats;
-	int stat_points = 0;
+    // Характеристики персонажа
+    std::unordered_map<std::string, int> stats;
+    int stat_points = 0;
 
-	std::string combat_enemy;
-	int combat_enemy_health = 0;
-	int combat_player_health = 0;
-	bool player_turn = true;
+    // Текущее здоровье (вне боя)
+    int current_health = 0;
+
+    // Временные данные боя
+    std::string combat_enemy;
+    int combat_enemy_health = 0;
+    int combat_player_health = 0;  // Текущее здоровье в бою
+    bool player_turn = true;
 };
 
 #endif  // RPG_GAME_STATE_H_

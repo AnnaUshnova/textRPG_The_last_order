@@ -1,73 +1,49 @@
 #include "DataManager.h"
 #include "Utils.h"
 #include <fstream>
-#include <filesystem>
 #include <stdexcept>
-#include <iostream>
-#include <cstdlib> // для getenv
-#include <cctype> // для std::tolower
-#include <algorithm> // для std::transform
 
-// Для Windows API
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
-namespace fs = std::filesystem;
+namespace {
+    const std::unordered_map<std::string, std::string> kDataFiles = {
+        {"character_base", "character_base.json"},
+        {"checks", "checks.json"},
+        {"combat", "combat.json"},
+        {"endings", "endings.json"},
+        {"game_state", "game_state.json"},
+        {"items", "items.json"},
+        {"scenes", "scenes.json"}
+    };
+}  // namespace
 
 void DataManager::LoadAll(const std::string& data_dir) {
-    // Получаем абсолютный путь к директории данных
-    const fs::path abs_path = fs::absolute(data_dir);
-
-    // Проверяем существование директории
-    if (!fs::is_directory(abs_path)) {
-        throw std::runtime_error("Not a directory: " + abs_path.string());
+    data_path_ = data_dir;
+    if (data_path_.back() != '/') {
+        data_path_ += '/';
     }
 
-    data_path_ = abs_path.string();
+    for (const auto& [data_type, filename] : kDataFiles) {
+        const std::string full_path = data_path_ + filename;
+        std::ifstream file(full_path);
 
-    // Список обязательных файлов данных
-    static constexpr std::array<const char*, 7> kDataFiles = {
-        "character_base.json", "checks.json", "combat.json",
-        "endings.json", "game_state.json", "items.json", "scenes.json"
-    };
-
-    for (const char* file_name : kDataFiles) {
-        const fs::path file_path = abs_path / file_name;
-
-        // Открываем файл
-#ifdef _WIN32
-        std::ifstream file(file_path.wstring());
-#else
-        std::ifstream file(file_path);
-#endif
-
-        if (!file) {
-            throw std::runtime_error("Failed to open file: " + file_path.string());
+        if (!file.is_open()) {
+            throw std::runtime_error("Failed to open data file: " + full_path);
         }
 
-        // Загружаем JSON данные
-        nlohmann::json data;
         try {
-            file >> data;
+            data_sets_[data_type] = nlohmann::json::parse(file);
         }
         catch (const nlohmann::json::parse_error& e) {
-            throw std::runtime_error("JSON error in " + file_path.string() + ": " + e.what());
+            throw std::runtime_error("JSON parse error in " + filename +
+                ": " + e.what());
         }
-
-        // Извлекаем имя файла без расширения для ключа
-        const std::string key = std::string(file_name).substr(0, std::strlen(file_name) - 5);
-        data_sets_[key] = std::move(data);
     }
 }
 
-
-
 const nlohmann::json& DataManager::Get(const std::string& type,
     const std::string& id) const {
-    auto it = data_sets_.find(type);
+    const auto it = data_sets_.find(type);
     if (it == data_sets_.end()) {
-        throw std::out_of_range("Data type not found: " + type);
+        throw std::out_of_range("Unknown data type: " + type);
     }
 
     if (id.empty()) {
@@ -75,36 +51,31 @@ const nlohmann::json& DataManager::Get(const std::string& type,
     }
 
     if (!it->second.contains(id)) {
-        throw std::out_of_range("ID not found in " + type + ": " + id);
+        throw std::out_of_range("ID not found: " + id + " in type: " + type);
     }
 
-    return it->second[id];
+    return it->second.at(id);
 }
 
 nlohmann::json& DataManager::GetMutable(const std::string& type) {
     auto it = data_sets_.find(type);
     if (it == data_sets_.end()) {
-        throw std::out_of_range("Data type not found: " + type);
+        throw std::out_of_range("Unknown data type: " + type);
     }
     return it->second;
 }
 
 void DataManager::Save(const std::string& type) {
-    auto it = data_sets_.find(type);
-    if (it == data_sets_.end()) {
-        throw std::out_of_range("Data type not found for save: " + type);
+    const auto file_it = kDataFiles.find(type);
+    if (file_it == kDataFiles.end()) {
+        throw std::out_of_range("Unknown data type for save: " + type);
     }
 
-    const fs::path file_path = fs::path(data_path_) / (type + ".json");
-    std::ofstream file(file_path);
+    const std::string full_path = data_path_ + file_it->second;
+    std::ofstream file(full_path);
     if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file for writing: " + file_path.string());
+        throw std::runtime_error("Failed to open file for writing: " + full_path);
     }
 
-    try {
-        file << it->second.dump(4);
-    }
-    catch (const nlohmann::json::exception& e) {
-        throw std::runtime_error("JSON save error: " + std::string(e.what()));
-    }
+    file << data_sets_.at(type).dump(2);  // Pretty print with 2-space indent
 }
