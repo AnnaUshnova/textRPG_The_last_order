@@ -8,22 +8,22 @@ EndingProcessor::EndingProcessor(DataManager& data, GameState& state)
 }
 
 void EndingProcessor::Process(const std::string& ending_id) {
-    // Загружаем данные концовки
+    // Р—Р°РіСЂСѓР¶Р°РµРј РґР°РЅРЅС‹Рµ РєРѕРЅС†РѕРІРєРё
     const auto& ending = data_.Get("endings", ending_id);
 
-    // Показываем концовку
+    // РџРѕРєР°Р·С‹РІР°РµРј РєРѕРЅС†РѕРІРєСѓ
     ShowEnding(ending);
 
-    // Добавляем в коллекцию открытых концовок
+    // Р”РѕР±Р°РІР»СЏРµРј РІ РєРѕР»Р»РµРєС†РёСЋ РѕС‚РєСЂС‹С‚С‹С… РєРѕРЅС†РѕРІРѕРє
     state_.unlocked_endings.insert(ending_id);
 
-    // Показываем коллекцию концовок
+    // РџРѕРєР°Р·С‹РІР°РµРј РєРѕР»Р»РµРєС†РёСЋ РєРѕРЅС†РѕРІРѕРє
     ShowEndingCollection();
 
-    // Сохраняем прогресс
+    // РЎРѕС…СЂР°РЅСЏРµРј РїСЂРѕРіСЂРµСЃСЃ
     SaveProgress();
 
-    // Обновляем состояние игры
+    // РћР±РЅРѕРІР»СЏРµРј СЃРѕСЃС‚РѕСЏРЅРёРµ РёРіСЂС‹
     state_.active_type = "menu";
 }
 
@@ -32,16 +32,16 @@ void EndingProcessor::ShowEnding(const nlohmann::json& ending) {
     std::cout << ending["text"].get<std::string>() << "\n";
 
     if (ending.contains("achievement")) {
-        std::cout << "\n[Достижение: " << ending["achievement"].get<std::string>() << "]\n";
+        std::cout << "\n[Р”РѕСЃС‚РёР¶РµРЅРёРµ: " << ending["achievement"].get<std::string>() << "]\n";
     }
 
-    std::cout << "\nНажмите Enter, чтобы продолжить...";
+    std::cout << "\nРќР°Р¶РјРёС‚Рµ Enter, С‡С‚РѕР±С‹ РїСЂРѕРґРѕР»Р¶РёС‚СЊ...";
     rpg_utils::Input::GetLine();
 }
 
 void EndingProcessor::ShowEndingCollection() {
-    std::cout << "\n\n=== КОЛЛЕКЦИЯ КОНЦОВОК ===\n";
-    std::cout << "Открыто: " << state_.unlocked_endings.size() << " из "
+    std::cout << "\n\n=== РљРћР›Р›Р•РљР¦РРЇ РљРћРќР¦РћР’РћРљ ===\n";
+    std::cout << "РћС‚РєСЂС‹С‚Рѕ: " << state_.unlocked_endings.size() << " РёР· "
         << data_.Get("endings").size() << "\n\n";
 
     const auto& all_endings = data_.Get("endings");
@@ -51,38 +51,38 @@ void EndingProcessor::ShowEndingCollection() {
         std::cout << counter++ << ". ";
 
         if (state_.unlocked_endings.find(id) != state_.unlocked_endings.end()) {
-            // Открытая концовка
+            // РћС‚РєСЂС‹С‚Р°СЏ РєРѕРЅС†РѕРІРєР°
             std::cout << ending["title"].get<std::string>() << " - ";
             std::cout << ending["text"].get<std::string>() << "\n";
         }
         else {
-            // Неоткрытая концовка
-            std::cout << "??? (Неизвестная концовка)\n";
+            // РќРµРѕС‚РєСЂС‹С‚Р°СЏ РєРѕРЅС†РѕРІРєР°
+            std::cout << "??? (РќРµРёР·РІРµСЃС‚РЅР°СЏ РєРѕРЅС†РѕРІРєР°)\n";
         }
     }
 
-    std::cout << "\nНажмите Enter, чтобы вернуться в меню...";
+    std::cout << "\nРќР°Р¶РјРёС‚Рµ Enter, С‡С‚РѕР±С‹ РІРµСЂРЅСѓС‚СЊСЃСЏ РІ РјРµРЅСЋ...";
     rpg_utils::Input::GetLine();
 }
 
 void EndingProcessor::SaveProgress() {
     try {
-        // Обновляем данные о концовках в GameState
+        // РћР±РЅРѕРІР»СЏРµРј РґР°РЅРЅС‹Рµ Рѕ РєРѕРЅС†РѕРІРєР°С… РІ GameState
         nlohmann::json& game_state = data_.GetMutable("game_state");
 
-        // Создаем массив открытых концовок
+        // РЎРѕР·РґР°РµРј РјР°СЃСЃРёРІ РѕС‚РєСЂС‹С‚С‹С… РєРѕРЅС†РѕРІРѕРє
         nlohmann::json unlocked_array = nlohmann::json::array();
         for (const auto& ending_id : state_.unlocked_endings) {
             unlocked_array.push_back(ending_id);
         }
 
-        // Обновляем данные
+        // РћР±РЅРѕРІР»СЏРµРј РґР°РЅРЅС‹Рµ
         game_state["unlocked_endings"] = unlocked_array;
 
-        // Сохраняем обратно в файл
+        // РЎРѕС…СЂР°РЅСЏРµРј РѕР±СЂР°С‚РЅРѕ РІ С„Р°Р№Р»
         data_.Save("game_state");
     }
     catch (const std::exception& e) {
-        std::cerr << "Ошибка сохранения прогресса: " << e.what() << std::endl;
+        std::cerr << "РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ РїСЂРѕРіСЂРµСЃСЃР°: " << e.what() << std::endl;
     }
 }

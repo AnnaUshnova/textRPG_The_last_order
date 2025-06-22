@@ -26,6 +26,9 @@ struct GameState {
     int combat_enemy_health = 0;
     int combat_player_health = 0;
     bool player_turn = true;
+
+    // Для отслеживания последней сцены
+    std::string last_scene;
 };
 
 #endif  // RPG_GAME_STATE_H_

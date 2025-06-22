@@ -157,7 +157,10 @@
       {
         "id": "inspect_bodies",
         "text": "Осмотреть тела",
-        "check": "perception",
+        "check": {
+          "type": "intelligence",
+          "difficulty": -2
+        },
         "next_success": "scene7_1_success",
         "next_fail": "scene7_1_fail",
         "condition": "!flags.bodies_inspected",
@@ -166,7 +169,10 @@
       {
         "id": "search_hold",
         "text": "Обыскать трюм",
-        "check": "perception",
+        "check": {
+          "type": "intelligence",
+          "difficulty": 0
+        },
         "next_success": "scene7_2_success",
         "next_fail": "scene7_2_fail",
         "condition": "!flags.supplies_found",
@@ -175,7 +181,10 @@
       {
         "id": "to_elevator",
         "text": "К лифту",
-        "check": "perception",
+        "check": {
+          "type": "dexterity",
+          "difficulty": -4
+        },
         "next_success": "scene7_3_success",
         "next_fail": "scene7_3_fail",
         "condition": "!flags.mutant_defeated",
@@ -215,31 +224,43 @@
     ],
     "choices": [
       {
+        "id": "inspect_surroundings",
         "text": "Осмотреться",
-        "check": "perception",
-        "critical_success": "scene8_perception_critical",
-        "success": "scene8_perception_success",
-        "fail": "scene8_perception_fail",
-        "condition": "!flags.scene8_inspected"
+        "check": {
+          "type": "intelligence",
+          "difficulty": 2
+        },
+        "critical_success": "scene8_intelligence_critical",
+        "success": "scene8_intelligence_success",
+        "fail": "scene8_intelligence_fail",
+        "condition": "!flags.scene8_inspected",
+        "flag_to_set": "scene8_inspected"
       },
       {
+        "id": "move_dexterityily",
         "text": "Двигаться скрытно",
-        "check": "stealth",
+        "check": {
+          "type": "dexterity",
+          "difficulty": -1
+        },
         "success": "scene9",
         "fail": "ending3",
         "condition": "flags.scene8_inspected"
       },
       {
+        "id": "move_openly",
         "text": "Двигаться открыто",
         "next_scene": "ending4",
         "condition": "flags.scene8_inspected"
       },
       {
+        "id": "set_trap",
         "text": "Заманить в ловушку",
         "next_scene": "scene8_trap_option",
-        "condition": "flags.scene8_perception_critical"
+        "condition": "flags.scene8_intelligence_critical"
       },
       {
+        "id": "return_to_choice",
         "text": "Вернуться к выбору",
         "next_scene": "scene8",
         "condition": "flags.scene8_inspected"
@@ -260,12 +281,17 @@
     ],
     "choices": [
       {
+        "id": "lure_monster",
         "text": "Попытаться заманить",
-        "check": "agility",
+        "check": {
+          "type": "willpower",
+          "difficulty": -3
+        },
         "success": "scene9",
         "fail": "ending2"
       },
       {
+        "id": "retreat",
         "text": "Отступить",
         "next_scene": "scene8"
       }
@@ -284,16 +310,24 @@
     ],
     "choices": [
       {
+        "id": "push_through",
         "text": "Прорваться",
-        "check": "endurance",
+        "check": {
+          "type": "endurance",
+          "difficulty": -2
+        },
         "critical_success": "scene9_2_critical",
         "success": "scene9_2_success",
         "fail": "scene9_2_fail",
         "critical_fail": "scene9_2_critical_fail"
       },
       {
+        "id": "analyze_route",
         "text": "Проанализировать маршрут",
-        "check": "intelligence",
+        "check": {
+          "type": "intelligence",
+          "difficulty": 1
+        },
         "critical_success": "scene9_3_critical",
         "success": "scene9_3_success",
         "fail": "scene9_3_fail",

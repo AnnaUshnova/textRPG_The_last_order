@@ -2,7 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 
-// Объявляем вспомогательную функцию перед использованием
+// РћР±СЉСЏРІР»СЏРµРј РІСЃРїРѕРјРѕРіР°С‚РµР»СЊРЅСѓСЋ С„СѓРЅРєС†РёСЋ РїРµСЂРµРґ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµРј
 static std::string RollResultToString(CombatProcessor::RollResult result);
 
 CombatProcessor::CombatProcessor(DataManager& data, GameState& state)
@@ -13,7 +13,7 @@ void CombatProcessor::Process(const std::string& combat_id) {
     const auto& combat_data = data_.Get("combat", combat_id);
     InitializeCombat(combat_data);
 
-    // Основной цикл боя
+    // РћСЃРЅРѕРІРЅРѕР№ С†РёРєР» Р±РѕСЏ
     while (state_.combat_player_health > 0 && state_.combat_enemy_health > 0) {
         if (state_.player_turn) {
             PlayerTurn(combat_data);
@@ -22,27 +22,27 @@ void CombatProcessor::Process(const std::string& combat_id) {
             EnemyTurn(combat_data);
         }
 
-        // Переключение хода
+        // РџРµСЂРµРєР»СЋС‡РµРЅРёРµ С…РѕРґР°
         state_.player_turn = !state_.player_turn;
     }
 
-    // Обработка результатов боя
+    // РћР±СЂР°Р±РѕС‚РєР° СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ Р±РѕСЏ
     if (state_.combat_player_health <= 0) {
-        state_.current_health = 0;  // Обновляем основное здоровье
-        // Поражение
+        state_.current_health = 0;  // РћР±РЅРѕРІР»СЏРµРј РѕСЃРЅРѕРІРЅРѕРµ Р·РґРѕСЂРѕРІСЊРµ
+        // РџРѕСЂР°Р¶РµРЅРёРµ
         const std::string ending_id = combat_data["on_lose"].get<std::string>();
         state_.active_type = "ending";
         state_.active_id = ending_id;
         state_.unlocked_endings.insert(ending_id);
     }
     else {
-        state_.current_health = state_.combat_player_health;  // Сохраняем здоровье после боя
+        state_.current_health = state_.combat_player_health;  // РЎРѕС…СЂР°РЅСЏРµРј Р·РґРѕСЂРѕРІСЊРµ РїРѕСЃР»Рµ Р±РѕСЏ
 
-        // Победа
+        // РџРѕР±РµРґР°
         if (combat_data.contains("on_win")) {
             const auto& win_effects = combat_data["on_win"];
 
-            // Исправление: явно указываем тип для items()
+            // РСЃРїСЂР°РІР»РµРЅРёРµ: СЏРІРЅРѕ СѓРєР°Р·С‹РІР°РµРј С‚РёРї РґР»СЏ items()
             if (win_effects.contains("set_flags")) {
                 for (auto it = win_effects["set_flags"].begin(); it != win_effects["set_flags"].end(); ++it) {
                     const std::string flag = it.key();
@@ -59,134 +59,43 @@ void CombatProcessor::Process(const std::string& combat_id) {
 }
 
 void CombatProcessor::InitializeCombat(const nlohmann::json& combat) {
-    // Берем здоровье из текущего состояния
+    // Р‘РµСЂРµРј Р·РґРѕСЂРѕРІСЊРµ РёР· С‚РµРєСѓС‰РµРіРѕ СЃРѕСЃС‚РѕСЏРЅРёСЏ
     state_.combat_player_health = state_.current_health;
 
-    // Остальной код без изменений
-    std::cout << "\nБОЙ: " << combat["enemy"].get<std::string>() << "\n";
-    std::cout << "Ваше здоровье: " << state_.combat_player_health << "/"
+    // РћСЃС‚Р°Р»СЊРЅРѕР№ РєРѕРґ Р±РµР· РёР·РјРµРЅРµРЅРёР№
+    std::cout << "\nР‘РћР™: " << combat["enemy"].get<std::string>() << "\n";
+    std::cout << "Р’Р°С€Рµ Р·РґРѕСЂРѕРІСЊРµ: " << state_.combat_player_health << "/"
         << state_.stats.at("health") << "\n";
-    std::cout << "Здоровье противника: " << state_.combat_enemy_health << "\n\n";
-}
-
-void CombatProcessor::PlayerTurn(const nlohmann::json& combat) {
-    const auto& options = combat["player_turn"]["options"];
-
-    std::cout << "Ваш ход. Выберите действие:\n";
-    for (size_t i = 0; i < options.size(); ++i) {
-        std::cout << i + 1 << ". " << options[i]["type"].get<std::string>() << "\n";
-    }
-
-    int choice = rpg_utils::Input::GetInt(1, options.size()) - 1;
-    ResolveAction(options[choice]);
-}
-
-void CombatProcessor::EnemyTurn(const nlohmann::json& combat) {
-    std::cout << "\nХод противника...\n";
-
-    // Враги всегда используют стандартную атаку
-    RollResult result = RollCheck("enemy_attack");
-    const std::string result_str = RollResultToString(result);
-
-    // Исправление: используем at() вместо operator[] для избежания неоднозначности
-    const std::string outcome = combat["enemy_turn"]["results"].at(result_str).get<std::string>();
-
-    std::cout << outcome << "\n\n";
-
-    // Применяем урон на основе результата
-    switch (result) {
-    case RollResult::kCriticalSuccess:
-        state_.combat_player_health -= 10;
-        break;
-    case RollResult::kSuccess:
-        state_.combat_player_health -= 5;
-        break;
-    case RollResult::kFail:
-        state_.combat_player_health -= 2;
-        break;
-    case RollResult::kCriticalFail:
-        // Критический провал противника - он наносит урон себе
-        state_.combat_enemy_health -= 5;
-        break;
-    }
-
-    // Обновляем статус
-    std::cout << "Ваше здоровье: " << state_.combat_player_health << "\n";
-    std::cout << "Здоровье противника: " << state_.combat_enemy_health << "\n\n";
-}
-
-void CombatProcessor::ResolveAction(const nlohmann::json& action) {
-    RollResult result = RollCheck("attack");  // Стандартная проверка для действий
-    const std::string result_str = RollResultToString(result);
-
-    // Получаем текст результата
-    const std::string outcome_text = action["results"].at(result_str).get<std::string>();
-    std::cout << "\n" << outcome_text << "\n";
-
-    // Применяем эффекты на основе результата
-    switch (result) {
-    case RollResult::kCriticalSuccess:
-        state_.combat_enemy_health -= 15;
-        break;
-    case RollResult::kSuccess:
-        state_.combat_enemy_health -= 10;
-        break;
-    case RollResult::kFail:
-        state_.combat_enemy_health -= 5;
-        break;
-    case RollResult::kCriticalFail:
-        // Критический провал - игрок наносит урон себе
-        state_.combat_player_health -= 5;
-        break;
-    }
-
-    // Специальная обработка для определенных типов действий
-    const std::string action_type = action["type"].get<std::string>();
-    if (action_type == "medkit") {
-        if (result == RollResult::kSuccess || result == RollResult::kCriticalSuccess) {
-            // Лечение при успешном использовании аптечки
-            int heal_amount = rpg_utils::RollDice(2, 6) + 5;  // 2d6+5
-            state_.combat_player_health = std::min(
-                state_.stats.at("health"),
-                state_.combat_player_health + heal_amount
-            );
-            std::cout << "Восстановлено " << heal_amount << " здоровья.\n";
-        }
-    }
-
-    // Обновляем статус
-    std::cout << "Ваше здоровье: " << state_.combat_player_health << "\n";
-    std::cout << "Здоровье противника: " << state_.combat_enemy_health << "\n\n";
+    std::cout << "Р—РґРѕСЂРѕРІСЊРµ РїСЂРѕС‚РёРІРЅРёРєР°: " << state_.combat_enemy_health << "\n\n";
 }
 
 CombatProcessor::RollResult CombatProcessor::RollCheck(const std::string& stat_name) const {
-    int stat_value = 10;  // Базовое значение для атак
+    // Р”Р»СЏ РїСЂРѕСЃС‚С‹С… РїСЂРѕРІРµСЂРѕРє РІСЂР°РіР° РёСЃРїРѕР»СЊР·СѓРµРј С„РёРєСЃРёСЂРѕРІР°РЅРЅС‹Рµ РїРѕСЂРѕРіРё
+    int target_value = 12; // РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏ СЃР»РѕР¶РЅРѕСЃС‚СЊ РґР»СЏ РІСЂР°РіР°
 
-    // Для игрока используем реальные характеристики
-    if (stat_name == "attack" && state_.stats.find("melee") != state_.stats.end()) {
-        stat_value = state_.stats.at("melee");
+    auto roll = rpg_utils::RollWithDetails(target_value);
+    rpg_utils::PrintRollDetails(stat_name, 0, 0, target_value, roll);
+
+    switch (roll.result) {
+    case rpg_utils::RollResultType::kCriticalSuccess: return RollResult::kCriticalSuccess;
+    case rpg_utils::RollResultType::kSuccess: return RollResult::kSuccess;
+    case rpg_utils::RollResultType::kFail: return RollResult::kFail;
+    case rpg_utils::RollResultType::kCriticalFail: return RollResult::kCriticalFail;
     }
-
-    int roll = rpg_utils::RollDice(3, 6);  // 3d6
-    int margin = stat_value - roll;
-
-    if (margin >= 5) return RollResult::kCriticalSuccess;
-    if (margin >= 0) return RollResult::kSuccess;
-    if (margin >= -5) return RollResult::kFail;
-    return RollResult::kCriticalFail;
+    return RollResult::kFail; // fallback
 }
 
 void CombatProcessor::ApplyCombatEffects(const nlohmann::json& effects) {
     if (effects.is_null()) return;
 
-    // Обработка эффектов боя
+    // РћР±СЂР°Р±РѕС‚РєР° СЌС„С„РµРєС‚РѕРІ Р±РѕСЏ
     if (effects.contains("damage")) {
         state_.combat_enemy_health -= effects["damage"].get<int>();
     }
 
     if (effects.contains("heal")) {
         state_.combat_player_health += effects["heal"].get<int>();
-        // Не превышаем максимальное здоровье
+        // РќРµ РїСЂРµРІС‹С€Р°РµРј РјР°РєСЃРёРјР°Р»СЊРЅРѕРµ Р·РґРѕСЂРѕРІСЊРµ
         state_.combat_player_health = std::min(
             state_.combat_player_health,
             state_.stats.at("health")
@@ -194,7 +103,7 @@ void CombatProcessor::ApplyCombatEffects(const nlohmann::json& effects) {
     }
 }
 
-// Реализация вспомогательной функции для преобразования RollResult в строку
+// Р РµР°Р»РёР·Р°С†РёСЏ РІСЃРїРѕРјРѕРіР°С‚РµР»СЊРЅРѕР№ С„СѓРЅРєС†РёРё РґР»СЏ РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёСЏ RollResult РІ СЃС‚СЂРѕРєСѓ
 static std::string RollResultToString(CombatProcessor::RollResult result) {
     switch (result) {
     case CombatProcessor::RollResult::kCriticalSuccess: return "critical_success";
@@ -203,4 +112,147 @@ static std::string RollResultToString(CombatProcessor::RollResult result) {
     case CombatProcessor::RollResult::kCriticalFail: return "critical_fail";
     default: return "unknown";
     }
+}
+
+void CombatProcessor::ResolveAction(const nlohmann::json& action) {
+    // РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ РґР»СЏ Р±СЂРѕСЃРєР°
+    std::string stat = action.value("stat", "dexterity");
+    int difficulty = action.value("difficulty", 0);
+
+    // Р Р°СЃСЃС‡РёС‚С‹РІР°РµРј Р·РЅР°С‡РµРЅРёРµ С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
+    int player_stat = rpg_utils::CalculateStat(stat, state_.stats, data_);
+    int target_value = player_stat + difficulty;
+
+    // Р’С‹РїРѕР»РЅСЏРµРј Р±СЂРѕСЃРѕРє СЃ РґРµС‚Р°Р»РёР·Р°С†РёРµР№
+    auto roll = rpg_utils::RollWithDetails(target_value);
+
+    // РџРѕР»СѓС‡Р°РµРј РѕС‚РѕР±СЂР°Р¶Р°РµРјРѕРµ РёРјСЏ С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
+    const auto& char_base = data_.Get("character_base");
+    const auto& display_names = char_base["display_names"];
+    std::string stat_display_name = display_names.value(stat, stat);
+
+    rpg_utils::PrintRollDetails(
+        "Р‘РѕРµРІРѕРµ РґРµР№СЃС‚РІРёРµ: " + action["type"].get<std::string>(),
+        player_stat,
+        difficulty,
+        target_value,
+        roll
+    );
+
+    // РџСЂРµРѕР±СЂР°Р·СѓРµРј РІ Р±РѕРµРІРѕР№ СЂРµР·СѓР»СЊС‚Р°С‚
+    RollResult result;
+    switch (roll.result) {
+    case rpg_utils::RollResultType::kCriticalSuccess:
+        result = RollResult::kCriticalSuccess;
+        break;
+    case rpg_utils::RollResultType::kSuccess:
+        result = RollResult::kSuccess;
+        break;
+    case rpg_utils::RollResultType::kFail:
+        result = RollResult::kFail;
+        break;
+    case rpg_utils::RollResultType::kCriticalFail:
+        result = RollResult::kCriticalFail;
+        break;
+    }
+
+    // РџРѕР»СѓС‡Р°РµРј С‚РµРєСЃС‚ СЂРµР·СѓР»СЊС‚Р°С‚Р°
+    const std::string result_str = RollResultToString(result);
+    const std::string& outcome = action["results"][result_str].get<std::string>();
+
+    std::cout << outcome << "\n";
+
+    // РџСЂРёРјРµРЅСЏРµРј СЌС„С„РµРєС‚С‹ РґРµР№СЃС‚РІРёСЏ
+    switch (result) {
+    case RollResult::kCriticalSuccess:
+        state_.combat_enemy_health -= 10;
+        break;
+    case RollResult::kSuccess:
+        state_.combat_enemy_health -= 5;
+        break;
+    case RollResult::kFail:
+        // РќРµР±РѕР»СЊС€РѕР№ СѓСЂРѕРЅ РїСЂРё РїСЂРѕРІР°Р»Рµ
+        state_.combat_enemy_health -= 1;
+        break;
+    case RollResult::kCriticalFail:
+        // РљСЂРёС‚РёС‡РµСЃРєРёР№ РїСЂРѕРІР°Р» - РІРѕР·РјРѕР¶РЅС‹ РЅРµРіР°С‚РёРІРЅС‹Рµ СЌС„С„РµРєС‚С‹ РґР»СЏ РёРіСЂРѕРєР°
+        state_.combat_player_health -= 2;
+        break;
+    }
+
+    // РћР±РЅРѕРІР»СЏРµРј СЃС‚Р°С‚СѓСЃ
+    std::cout << "\n[Р—РґРѕСЂРѕРІСЊРµ РёРіСЂРѕРєР°: " << state_.combat_player_health
+        << " | Р—РґРѕСЂРѕРІСЊРµ РІСЂР°РіР°: " << state_.combat_enemy_health << "]\n\n";
+}
+
+void CombatProcessor::PlayerTurn(const nlohmann::json& combat) {
+    const auto& options = combat["player_turn"]["options"];
+
+    // РџСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ РґРѕСЃС‚СѓРїРЅС‹С… РґРµР№СЃС‚РІРёР№
+    if (options.empty()) {
+        std::cout << "РЈ РІР°СЃ РЅРµС‚ РґРѕСЃС‚СѓРїРЅС‹С… РґРµР№СЃС‚РІРёР№!\n";
+        return;
+    }
+
+    std::cout << "\n=== Р’РђРЁ РҐРћР” ===\n";
+    std::cout << "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:\n";
+    for (size_t i = 0; i < options.size(); ++i) {
+        std::string action_name = options[i]["type"].get<std::string>();
+        std::cout << i + 1 << ". " << action_name << "\n";
+    }
+
+    int choice = rpg_utils::Input::GetInt(1, options.size()) - 1;
+    ResolveAction(options[choice]);
+}
+
+void CombatProcessor::EnemyTurn(const nlohmann::json& combat) {
+    std::cout << "\n=== РҐРћР” РџР РћРўРР’РќРРљРђ ===\n";
+
+    // Р’С‹РїРѕР»РЅСЏРµРј Р±СЂРѕСЃРѕРє РґР»СЏ РІСЂР°РіР° (С„РёРєСЃРёСЂРѕРІР°РЅРЅР°СЏ СЃР»РѕР¶РЅРѕСЃС‚СЊ 12)
+    auto roll = rpg_utils::RollWithDetails(12);
+    rpg_utils::PrintRollDetails("РђС‚Р°РєР° РІСЂР°РіР°", 0, 0, 12, roll);
+
+    // РџСЂРµРѕР±СЂР°Р·СѓРµРј РІ Р±РѕРµРІРѕР№ СЂРµР·СѓР»СЊС‚Р°С‚
+    RollResult result;
+    switch (roll.result) {
+    case rpg_utils::RollResultType::kCriticalSuccess:
+        result = RollResult::kCriticalSuccess;
+        break;
+    case rpg_utils::RollResultType::kSuccess:
+        result = RollResult::kSuccess;
+        break;
+    case rpg_utils::RollResultType::kFail:
+        result = RollResult::kFail;
+        break;
+    case rpg_utils::RollResultType::kCriticalFail:
+        result = RollResult::kCriticalFail;
+        break;
+    }
+
+    const std::string result_str = RollResultToString(result);
+    const std::string& outcome = combat["enemy_turn"]["results"][result_str].get<std::string>();
+
+    std::cout << outcome << "\n";
+
+    // РџСЂРёРјРµРЅСЏРµРј СѓСЂРѕРЅ РЅР° РѕСЃРЅРѕРІРµ СЂРµР·СѓР»СЊС‚Р°С‚Р°
+    switch (result) {
+    case RollResult::kCriticalSuccess:
+        state_.combat_player_health -= 8;
+        break;
+    case RollResult::kSuccess:
+        state_.combat_player_health -= 4;
+        break;
+    case RollResult::kFail:
+        state_.combat_player_health -= 1;
+        break;
+    case RollResult::kCriticalFail:
+        // РљСЂРёС‚РёС‡РµСЃРєРёР№ РїСЂРѕРІР°Р» РїСЂРѕС‚РёРІРЅРёРєР°
+        state_.combat_enemy_health -= 3;
+        std::cout << "РџСЂРѕС‚РёРІРЅРёРє РЅР°РЅРѕСЃРёС‚ СѓСЂРѕРЅ СЃРµР±Рµ!\n";
+        break;
+    }
+
+    // РћР±РЅРѕРІР»СЏРµРј СЃС‚Р°С‚СѓСЃ
+    std::cout << "\n[Р—РґРѕСЂРѕРІСЊРµ РёРіСЂРѕРєР°: " << state_.combat_player_health
+        << " | Р—РґРѕСЂРѕРІСЊРµ РІСЂР°РіР°: " << state_.combat_enemy_health << "]\n\n";
 }

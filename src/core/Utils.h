@@ -31,6 +31,23 @@ namespace rpg_utils {
         static std::string GetLine();
     };
 
+    enum class RollResultType {
+        kCriticalSuccess,
+        kSuccess,
+        kFail,
+        kCriticalFail
+    };
+
+    struct RollDetails {
+        int total_roll;
+        RollResultType result;
+        std::string result_str;
+    };
+
+    RollDetails RollWithDetails(int target_value);
+    void PrintRollDetails(const std::string& context, int base_value, int modifier, int target_value, const RollDetails& roll);
+
+
 }  // namespace rpg_utils
 
 #endif  // RPG_UTILS_H_

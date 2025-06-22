@@ -1,22 +1,29 @@
 {
-  "current_scene": "scene1",
-  "inventory": [ "lasgun", "knife", "detonator", "melta_charge" ],
-  "flags": {
-    "ready_for_character_creation": false,
-    "bodies_inspected": false,
-    "supplies_found": false,
-    "missing_soldiers_noticed": false,
-    "mutant_stealth": false,
-    "column_trap_identified": false,
-    "scene8_inspected": false,
-    "scene8_perception_critical": false,
-    "scene8_stealth_auto": false
-  },
-  "unlocked_endings": [],
   "combat": {
     "current_enemy": null,
-    "player_turn": true,
+    "enemy_health": 0,
     "player_health": 100,
-    "enemy_health": 0
-  }
-} 
+    "player_turn": true
+  },
+  "current_scene": "scene1",
+  "flags": {
+    "bodies_inspected": false,
+    "column_trap_identified": false,
+    "missing_soldiers_noticed": false,
+    "mutant_stealth": false,
+    "ready_for_character_creation": false,
+    "scene8_inspected": false,
+    "scene8_perception_critical": false,
+    "scene8_stealth_auto": false,
+    "supplies_found": false
+  },
+  "inventory": [
+    "lasgun",
+    "knife",
+    "detonator",
+    "melta_charge"
+  ],
+  "unlocked_endings": [
+    "ending1"
+  ]
+}

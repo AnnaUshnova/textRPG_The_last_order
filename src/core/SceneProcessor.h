@@ -16,12 +16,17 @@ private:
         std::string id;
         std::string text;
         nlohmann::json effects;
-        nlohmann::json check;
+        nlohmann::json check;  // Теперь содержит type и difficulty
         std::string next_target;
+
+        // Поля для результатов проверок
         std::string next_success;
         std::string next_fail;
+        std::string critical_success;
+        std::string critical_fail;
+
         std::string next_scene;
-        std::string flag_to_set; // Новое поле
+        std::string flag_to_set;
     };
 
 
