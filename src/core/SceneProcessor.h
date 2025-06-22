@@ -13,16 +13,17 @@ public:
 
 private:
     struct Choice {
+        std::string id;
         std::string text;
         nlohmann::json effects;
         nlohmann::json check;
         std::string next_target;
-
-        // Новые поля для упрощенного формата
         std::string next_success;
         std::string next_fail;
         std::string next_scene;
+        std::string flag_to_set; // Новое поле
     };
+
 
     void Display(const nlohmann::json& scene);
     std::vector<Choice> GetAvailableChoices(const nlohmann::json& scene);

@@ -37,6 +37,8 @@ void SceneProcessor::Display(const nlohmann::json& scene) {
     }
 }
 
+
+
 std::vector<SceneProcessor::Choice> SceneProcessor::GetAvailableChoices(
     const nlohmann::json& scene) {
 
@@ -44,7 +46,7 @@ std::vector<SceneProcessor::Choice> SceneProcessor::GetAvailableChoices(
     if (!scene.contains("choices")) return available_choices;
 
     for (const auto& choice_json : scene["choices"]) {
-        // Check condition if present
+        // Проверка условия
         if (choice_json.contains("condition")) {
             const auto& condition = choice_json["condition"].get<std::string>();
             if (!rpg_utils::EvaluateCondition(condition, state_.flags)) {
@@ -52,18 +54,31 @@ std::vector<SceneProcessor::Choice> SceneProcessor::GetAvailableChoices(
             }
         }
 
+        // Проверка, что выбор еще не делался
+        if (choice_json.contains("flag_to_set")) {
+            const std::string flag = choice_json["flag_to_set"].get<std::string>();
+            if (state_.flags.find(flag) != state_.flags.end() && state_.flags.at(flag)) {
+                continue; // Пропускаем уже сделанный выбор
+            }
+        }
+
         Choice choice;
         choice.text = choice_json["text"].get<std::string>();
 
-        if (choice_json.contains("effects")) {
-            choice.effects = choice_json["effects"];
+        // ID выбора
+        if (choice_json.contains("id")) {
+            choice.id = choice_json["id"].get<std::string>();
         }
 
+        // Флаг для установки
+        if (choice_json.contains("flag_to_set")) {
+            choice.flag_to_set = choice_json["flag_to_set"].get<std::string>();
+        }
+
+        // Остальные поля
         if (choice_json.contains("check")) {
             choice.check = choice_json["check"];
         }
-
-        // New fields for simplified format
         if (choice_json.contains("next_success")) {
             choice.next_success = choice_json["next_success"].get<std::string>();
         }
@@ -79,6 +94,9 @@ std::vector<SceneProcessor::Choice> SceneProcessor::GetAvailableChoices(
 
     return available_choices;
 }
+
+
+
 
 void SceneProcessor::ProcessTransition(const std::string& target) {
     if (target.rfind("combat_", 0) == 0) {
@@ -112,6 +130,16 @@ void SceneProcessor::ProcessTransition(const std::string& target) {
 
 
 void SceneProcessor::ExecuteChoice(const Choice& choice) {
+    // Устанавливаем флаг, что выбор сделан
+    if (!choice.flag_to_set.empty()) {
+        state_.flags[choice.flag_to_set] = true;
+    }
+
+    // Устанавливаем пользовательский флаг, если он задан
+    if (!choice.flag_to_set.empty()) {
+        state_.flags[choice.flag_to_set] = true;
+    }
+
     // Применяем немедленные эффекты выбора
     if (!choice.effects.is_null()) {
         rpg_utils::ApplyEffects(choice.effects, state_);

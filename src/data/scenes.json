@@ -126,21 +126,21 @@
       }
     ]
   },
-  
-    "character_creation": {
-      "id": "character_creation",
-      "text": [
-        "Создание персонажа",
-        "Распределите характеристики вашего бойца"
-      ],
-      "choices": [
-        {
-          "text": "Создать персонажа",
-          "condition": "!flags.ready_for_character_creation" ,
-          "next_scene": "scene7"
-        }
-      ]
-    
+
+  "character_creation": {
+    "id": "character_creation",
+    "text": [
+      "Создание персонажа",
+      "Распределите характеристики вашего бойца"
+    ],
+    "choices": [
+      {
+        "text": "Создать персонажа",
+        "condition": "!flags.ready_for_character_creation",
+        "next_scene": "scene7"
+      }
+    ]
+
   },
   "scene7": {
     "id": "scene7",
@@ -155,35 +155,45 @@
     ],
     "choices": [
       {
+        "id": "inspect_bodies",
         "text": "Осмотреть тела",
         "check": "perception",
         "next_success": "scene7_1_success",
         "next_fail": "scene7_1_fail",
-        "condition": "!flags.bodies_inspected"
+        "condition": "!flags.bodies_inspected",
+        "flag_to_set": "choice_inspect_bodies_done"
       },
       {
+        "id": "search_hold",
         "text": "Обыскать трюм",
         "check": "perception",
         "next_success": "scene7_2_success",
         "next_fail": "scene7_2_fail",
-        "condition": "!flags.supplies_found"
+        "condition": "!flags.supplies_found",
+        "flag_to_set": "choice_search_hold_done"
       },
       {
+        "id": "to_elevator",
         "text": "К лифту",
         "check": "perception",
         "next_success": "scene7_3_success",
         "next_fail": "scene7_3_fail",
-        "condition": "!flags.mutant_defeated"
+        "condition": "!flags.mutant_defeated",
+        "flag_to_set": "choice_to_elevator_done"
       },
       {
+        "id": "continue_to_elevator",
         "text": "Продолжить к лифту",
         "next_scene": "scene8",
-        "condition": "flags.mutant_defeated"
+        "condition": "flags.mutant_defeated",
+        "flag_to_set": "choice_continue_done"
       },
       {
+        "id": "return_to_inspection",
         "text": "Вернуться к осмотру",
         "next_scene": "scene7",
-        "condition": "flags.mutant_defeated && (!flags.bodies_inspected || !flags.supplies_found)"
+        "condition": "flags.mutant_defeated && (!flags.bodies_inspected || !flags.supplies_found)",
+        "flag_to_set": "choice_return_done"
       }
     ]
   },
