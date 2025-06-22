@@ -41,5 +41,10 @@
   "derived_stats": {
     "health": "endurance * 2",
     "willpower": "intelligence * 2"
+  },
+  "resistance": {
+    "physical": 3,
+    "mental": 5,
+    "energy": -2
   }
 }

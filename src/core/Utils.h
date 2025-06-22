@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <random>
 
+// ќбъ€вл€ем пространство имен rpg_utils
 namespace rpg_utils {
 
     // String utilities
@@ -46,7 +47,6 @@ namespace rpg_utils {
 
     RollDetails RollWithDetails(int target_value);
     void PrintRollDetails(const std::string& context, int base_value, int modifier, int target_value, const RollDetails& roll);
-
 
 }  // namespace rpg_utils
 

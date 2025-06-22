@@ -15,6 +15,7 @@ GameEngine::GameEngine(const std::string& data_path)
     InitializeGameState();
 }
 
+
 void GameEngine::Run() {
     while (true) {
         if (state_.active_type == "scene") {
@@ -43,7 +44,6 @@ void GameEngine::InitializeGameState() {
     const auto& game_state = data_.Get("game_state");
     state_.active_id = game_state["current_scene"].get<std::string>();
 
-
     // Определяем тип активной сцены по ID
     if (state_.active_id == "character_creation") {
         state_.active_type = "character_creation";
@@ -58,11 +58,9 @@ void GameEngine::InitializeGameState() {
         state_.active_type = "scene";
     }
 
-    // Загружаем характеристики
-    if (game_state.contains("stats")) {
-        for (const auto& [stat, value] : game_state["stats"].items()) {
-            state_.stats[stat] = value.get<int>();
-        }
+    // Загружаем характеристики ТОЛЬКО если они еще не загружены
+    if (state_.stats.empty()) {
+        CharacterLoader::LoadFromJson(state_, data_.Get("character_base"));
     }
 
     // Загружаем только текущий инвентарь

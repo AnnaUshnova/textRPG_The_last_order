@@ -167,8 +167,6 @@ void SceneProcessor::ProcessTransition(const std::string& target) {
         // Боевая сцена
         state_.active_type = "combat";
         state_.combat_enemy = target;
-        state_.combat_player_health = state_.current_health;
-        state_.combat_enemy_health = data_.Get("combat", target)["health"].get<int>();
         state_.player_turn = true;
     }
     else if (target.rfind("ending", 0) == 0) {

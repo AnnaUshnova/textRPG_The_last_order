@@ -5,15 +5,13 @@
 #include <iomanip>
 #include <algorithm>
 
-
 CharacterCreator::CharacterCreator(DataManager& data, GameState& state)
     : data_(data), state_(state), first_display_(true) {
 }
 
 void CharacterCreator::Process() {
-    if (state_.stats.empty()) {
-        InitializeStats();
-    }
+    // Всегда используем CharacterLoader для инициализации характеристик
+    CharacterLoader::LoadFromJson(state_, data_.Get("character_base"));
 
     // Первоначальное отображение с полными описаниями
     DisplayStats(true);
@@ -24,20 +22,9 @@ void CharacterCreator::Process() {
     }
 
     FinalizeCreation();
-    DisplayInventory();  // Добавляем вывод инвентаря
+    DisplayInventory();
 }
 
-
-void CharacterCreator::InitializeStats() {
-    const auto& char_base = data_.Get("character_base");
-    for (const auto& [stat, value] : char_base.items()) {
-        if (stat != "points_to_distribute" && stat != "descriptions" &&
-            stat != "display_names" && stat != "name_lengths" && stat != "derived_stats") {
-            state_.stats[stat] = value.get<int>();
-        }
-    }
-    state_.stat_points = char_base["points_to_distribute"].get<int>();
-}
 
 void CharacterCreator::DisplayStats(bool full_descriptions) {
     const auto& char_base = data_.Get("character_base");
@@ -294,6 +281,8 @@ void CharacterCreator::DisplayInventory() {
     // Сохраняем инвентарь в текущее состояние
     state_.inventory = base_inventory;
 }
+
+
 void CharacterCreator::FinalizeCreation() {
     state_.flags["character_created"] = true;
     std::cout << "\n================================================\n";

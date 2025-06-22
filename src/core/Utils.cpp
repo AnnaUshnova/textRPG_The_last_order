@@ -6,6 +6,7 @@
 #include <iostream>
 #include <limits>
 #include <fstream>
+#include <sstream>
 
 namespace rpg_utils {
 
@@ -183,24 +184,28 @@ namespace rpg_utils {
 
     // Input handling
 
+ // Реализация методов класса Input
     int Input::GetInt(int min, int max) {
         int value;
         while (true) {
             std::cout << "> ";
-            std::cin >> value;
+            std::string input;
+            std::getline(std::cin, input);
 
-            if (std::cin.fail() || value < min || value > max) {
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                std::cout << "Invalid input. Please enter a number between "
-                    << min << " and " << max << ".\n";
+            try {
+                value = std::stoi(input);
+                if (value >= min && value <= max) {
+                    return value;
+                }
             }
-            else {
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return value;
+            catch (...) {
+                // Обработка ошибок преобразования
             }
+
+            std::cout << "Некорректный ввод. Введите число от " << min << " до " << max << ".\n";
         }
     }
+
 
     std::string Input::GetLine() {
         std::string input;
@@ -209,48 +214,43 @@ namespace rpg_utils {
         return input;
     }
 
-    rpg_utils::RollDetails rpg_utils::RollWithDetails(int target_value) {
-        RollDetails details;
-        details.total_roll = RollDice(3, 6);
+    // Реализация RollWithDetails
+    RollDetails RollWithDetails(int target_value) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> dist(1, 20); // Бросок d20
 
-        if (details.total_roll <= 4) {
+        RollDetails details;
+        details.total_roll = dist(gen);
+
+        if (details.total_roll == 20) {
             details.result = RollResultType::kCriticalSuccess;
-            details.result_str = "critical_success";
+            details.result_str = "Критический успех!";
         }
-        else if (details.total_roll <= target_value) {
-            details.result = RollResultType::kSuccess;
-            details.result_str = "success";
-        }
-        else if (details.total_roll >= 17) {
+        else if (details.total_roll == 1) {
             details.result = RollResultType::kCriticalFail;
-            details.result_str = "critical_fail";
+            details.result_str = "Критический провал!";
+        }
+        else if (details.total_roll >= target_value) {
+            details.result = RollResultType::kSuccess;
+            details.result_str = "Успех";
         }
         else {
             details.result = RollResultType::kFail;
-            details.result_str = "fail";
+            details.result_str = "Провал";
         }
 
         return details;
     }
 
-    void rpg_utils::PrintRollDetails(const std::string& context,
-        int base_value,
-        int modifier,
-        int target_value,
-        const RollDetails& roll) {
-        std::cout << "\n--- " << context << " ---\n"
-            << "Характеристика: " << base_value
-            << " + Модификатор: " << (modifier >= 0 ? "+" : "") << modifier
-            << " = Цель: " << target_value << "\n"
-            << "Бросок 3d6: " << roll.total_roll << " (";
-
-        // Показываем детали броска
-        if (roll.total_roll == 3) std::cout << "критический успех!";
-        else if (roll.total_roll == 18) std::cout << "критический провал!";
-        else if (roll.total_roll <= target_value) std::cout << "успех";
-        else std::cout << "провал";
-
-        std::cout << ")\n";
+    // Реализация PrintRollDetails
+    void PrintRollDetails(const std::string& context, int base_value, int modifier, int target_value, const RollDetails& roll) {
+        std::cout << "\n--- Бросок: " << context << " ---\n";
+        std::cout << "База: " << base_value << " + Модификатор: " << modifier;
+        std::cout << " = Цель: " << target_value << "\n";
+        std::cout << "Результат броска: " << roll.total_roll << " -> ";
+        std::cout << roll.result_str << "\n";
+        std::cout << "--------------------------------\n";
     }
 
 
