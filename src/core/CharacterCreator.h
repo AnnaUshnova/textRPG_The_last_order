@@ -31,7 +31,6 @@ private:
 
     std::string GetStatByIndex(int index);
     bool ApplyPoints(const std::string& stat, int points);
-    bool ApplySinglePoint(const std::string& stat);
 
     DataManager& data_;
     GameState& state_;

@@ -20,7 +20,6 @@ void CharacterCreator::Process() {
     first_display_ = false;
 
     while (state_.stat_points > 0) {
-        DisplayStats(false);
         DistributePoints();
     }
 

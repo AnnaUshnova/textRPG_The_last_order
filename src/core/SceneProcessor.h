@@ -17,6 +17,11 @@ private:
         nlohmann::json effects;
         nlohmann::json check;
         std::string next_target;
+
+        // Новые поля для упрощенного формата
+        std::string next_success;
+        std::string next_fail;
+        std::string next_scene;
     };
 
     void Display(const nlohmann::json& scene);

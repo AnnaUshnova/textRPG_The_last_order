@@ -102,22 +102,28 @@ namespace rpg_utils {
     void ApplyEffects(const nlohmann::json& effects, GameState& state) {
         if (effects.is_null()) return;
 
-        // Исправленная обработка set_flags
+#ifdef DEBUG
+        std::cout << "Applying effects: " << effects.dump() << "\n";
+#endif
+
+        // Обработка set_flags
         if (effects.contains("set_flags")) {
-            for (auto it = effects["set_flags"].begin(); it != effects["set_flags"].end(); ++it) {
-                const std::string& flag = it.key();
-                state.flags[flag] = it.value().get<bool>();
+            const auto& flags = effects["set_flags"];
+            if (flags.is_object()) {
+                for (auto it = flags.begin(); it != flags.end(); ++it) {
+                    state.flags[it.key()] = it.value().get<bool>();
+                }
             }
         }
 
-        // Обработка add_items (остается без изменений)
+        // Обработка add_items
         if (effects.contains("add_items") && effects["add_items"].is_array()) {
             for (const auto& item : effects["add_items"]) {
                 state.inventory.push_back(item.get<std::string>());
             }
         }
 
-        // Обработка remove_items (остается без изменений)
+        // Обработка remove_items
         if (effects.contains("remove_items") && effects["remove_items"].is_array()) {
             for (const auto& item : effects["remove_items"]) {
                 auto it = std::find(state.inventory.begin(), state.inventory.end(),
@@ -125,14 +131,6 @@ namespace rpg_utils {
                 if (it != state.inventory.end()) {
                     state.inventory.erase(it);
                 }
-            }
-        }
-
-        // Исправленная обработка modify_stats
-        if (effects.contains("modify_stats")) {
-            for (auto it = effects["modify_stats"].begin(); it != effects["modify_stats"].end(); ++it) {
-                const std::string& stat = it.key();
-                state.stats[stat] += it.value().get<int>();
             }
         }
     }

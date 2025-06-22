@@ -39,23 +39,33 @@ void DataManager::LoadAll(const std::string& data_dir) {
     }
 }
 
-const nlohmann::json& DataManager::Get(const std::string& type,
-    const std::string& id) const {
+const nlohmann::json& DataManager::Get(const std::string& type, const std::string& id) const {
     const auto it = data_sets_.find(type);
     if (it == data_sets_.end()) {
         throw std::out_of_range("Unknown data type: " + type);
     }
 
+    // Если ID пустой, возвращаем весь набор данных
     if (id.empty()) {
         return it->second;
     }
 
+    // Для типа "checks" ищем конкретную проверку
+    if (type == "checks") {
+        if (!it->second.contains(id)) {
+            throw std::out_of_range("Check not found: " + id);
+        }
+        return it->second.at(id);
+    }
+
+    // Общая обработка для других типов
     if (!it->second.contains(id)) {
         throw std::out_of_range("ID not found: " + id + " in type: " + type);
     }
 
     return it->second.at(id);
 }
+
 
 nlohmann::json& DataManager::GetMutable(const std::string& type) {
     auto it = data_sets_.find(type);
