@@ -1,6 +1,7 @@
 {
   "lasgun": {
     "name": "Лазган",
+    "name_length": 6,
     "type": "weapon",
     "damage": "1d10",
     "description": "Царапины на прикладе, пятна крови на стволе. Батарея - полная.",
@@ -8,18 +9,21 @@
   },
   "knife": {
     "name": "Нож",
+    "name_length": 3,
     "type": "weapon",
     "damage": "1d6",
     "description": "Чёрный, словно ночь над Кадией. Отвечает холодом на прикосновение."
   },
   "melta_charge": {
     "name": "Мельтазаряд",
+    "name_length": 11,
     "type": "quest",
     "description": "Тяжелее, чем должен быть. Смерть в рюкзаке. Судьба давит на плечи.",
     "usable_in": [ "scene9" ]
   },
   "frag_grenade": {
     "name": "Граната",
+    "name_length": 7,
     "type": "consumable",
     "damage": "3d6",
     "description": "Стандартные фраги, смертоносные, пахнут машинным маслом.",
@@ -27,6 +31,7 @@
   },
   "medkit": {
     "name": "Аптечка",
+    "name_length": 7,
     "type": "consumable",
     "heal": "2d6+5",
     "description": "Засохшая кровь на упаковке, но содержимое цело.",
@@ -34,6 +39,7 @@
   },
   "detonator": {
     "name": "Детонатор",
+    "name_length": 9,
     "type": "quest",
     "description": "Холодный, чужой, как сердце еретика. Бесполезен без заряда.",
     "usable_with": "melta_charge"

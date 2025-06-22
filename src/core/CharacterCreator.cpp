@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <algorithm>
 
+
 CharacterCreator::CharacterCreator(DataManager& data, GameState& state)
     : data_(data), state_(state), first_display_(true) {
 }
@@ -19,11 +20,14 @@ void CharacterCreator::Process() {
     first_display_ = false;
 
     while (state_.stat_points > 0) {
+        DisplayStats(false);
         DistributePoints();
     }
 
     FinalizeCreation();
+    DisplayInventory();  // Добавляем вывод инвентаря
 }
+
 
 void CharacterCreator::InitializeStats() {
     const auto& char_base = data_.Get("character_base");
@@ -218,6 +222,79 @@ bool CharacterCreator::ApplyPoints(const std::string& stat, int points) {
     return true;
 }
 
+void CharacterCreator::DisplayInventory() {
+    const auto& game_state = data_.Get("game_state");
+
+    // Проверяем наличие инвентаря
+    if (!game_state.contains("inventory") || !game_state["inventory"].is_array()) {
+        return;
+    }
+
+    // Получаем базовый инвентарь из game_state.json
+    std::vector<std::string> base_inventory;
+    for (const auto& item : game_state["inventory"]) {
+        base_inventory.push_back(item.get<std::string>());
+    }
+
+    // Получаем данные всех предметов
+    const auto& all_items = data_.Get("items");
+
+    // Собираем информацию для вывода
+    std::vector<std::string> item_names;
+    std::vector<int> item_name_lengths;
+    std::vector<std::string> item_descriptions;
+
+    // Рассчитываем максимальную длину названия
+    int max_name_length = 0;
+
+    for (const auto& item_id : base_inventory) {
+        if (all_items.contains(item_id)) {
+            const auto& item = all_items[item_id];
+
+            // Получаем название
+            std::string name = item.contains("name") ?
+                item["name"].get<std::string>() : item_id;
+            item_names.push_back(name);
+
+            // Получаем длину названия
+            int name_length = item.contains("name_length") ?
+                item["name_length"].get<int>() : name.length();
+            item_name_lengths.push_back(name_length);
+
+            // Обновляем максимальную длину
+            if (name_length > max_name_length) {
+                max_name_length = name_length;
+            }
+
+            // Получаем описание
+            std::string desc = item.contains("description") ?
+                item["description"].get<std::string>() : "(нет описания)";
+            item_descriptions.push_back(desc);
+        }
+    }
+
+    // Выводим инвентарь
+    std::cout << "\n\n=== ВАШ СТАРТОВЫЙ ИНВЕНТАРЬ ===\n";
+
+    if (item_names.empty()) {
+        std::cout << "  Ваш инвентарь пуст\n";
+    }
+    else {
+        for (size_t i = 0; i < item_names.size(); i++) {
+            // Рассчитываем отступ для выравнивания
+            int padding = max_name_length - item_name_lengths[i];
+
+            std::cout << "  • " << item_names[i]
+                << std::string(padding, ' ')
+                    << " - " << item_descriptions[i] << "\n";
+        }
+    }
+
+    std::cout << "===========================================\n";
+
+    // Сохраняем инвентарь в текущее состояние
+    state_.inventory = base_inventory;
+}
 void CharacterCreator::FinalizeCreation() {
     state_.flags["character_created"] = true;
     std::cout << "\n================================================\n";

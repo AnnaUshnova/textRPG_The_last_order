@@ -40,12 +40,23 @@ void GameEngine::Run() {
 }
 
 void GameEngine::InitializeGameState() {
-    // Загружаем начальное состояние из JSON
     const auto& game_state = data_.Get("game_state");
-
-    // Устанавливаем текущую сцену
-    state_.active_type = "scene";
     state_.active_id = game_state["current_scene"].get<std::string>();
+
+
+    // Определяем тип активной сцены по ID
+    if (state_.active_id == "character_creation") {
+        state_.active_type = "character_creation";
+    }
+    else if (state_.active_id.rfind("combat_", 0) == 0) {
+        state_.active_type = "combat";
+    }
+    else if (state_.active_id.rfind("ending", 0) == 0) {
+        state_.active_type = "ending";
+    }
+    else {
+        state_.active_type = "scene";
+    }
 
     // Загружаем характеристики
     if (game_state.contains("stats")) {
@@ -54,16 +65,7 @@ void GameEngine::InitializeGameState() {
         }
     }
 
-    // Инициализируем здоровье из характеристик
-    if (state_.stats.find("health") != state_.stats.end()) {
-        state_.current_health = state_.stats["health"];
-    }
-    else {
-        // Значение по умолчанию, если характеристика не найдена
-        state_.current_health = 100;
-    }
-
-    // Загружаем инвентарь
+    // Загружаем только текущий инвентарь
     if (game_state.contains("inventory") && game_state["inventory"].is_array()) {
         for (const auto& item : game_state["inventory"]) {
             state_.inventory.push_back(item.get<std::string>());
@@ -83,9 +85,5 @@ void GameEngine::InitializeGameState() {
             state_.unlocked_endings.insert(ending.get<std::string>());
         }
     }
-
-    // Проверяем, нужно ли создавать персонажа
-    if (state_.active_id == "character_creation") {
-        state_.active_type = "character_creation";
-    }
 }
+

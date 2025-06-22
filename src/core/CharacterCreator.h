@@ -16,6 +16,7 @@ private:
     void DisplayStats(bool full_descriptions);
     void DistributePoints();
     void FinalizeCreation();
+    void DisplayInventory();
 
     int CalculateMaxNameLength() const;
     bool ShouldDisplayStat(const std::string& stat) const;
