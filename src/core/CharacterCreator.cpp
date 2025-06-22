@@ -2,103 +2,197 @@
 #include <iostream>
 #include <vector>
 #include <stdexcept>
+#include <iomanip>
+#include <algorithm>
 
 CharacterCreator::CharacterCreator(DataManager& data, GameState& state)
-    : data_(data), state_(state) {
+    : data_(data), state_(state), first_display_(true) {
 }
 
 void CharacterCreator::Process() {
-    // Инициализация базовых характеристик, если они ещё не установлены
     if (state_.stats.empty()) {
-        const auto& char_base = data_.Get("character_base");
-        for (const auto& [stat, value] : char_base.items()) {
-            if (stat != "points_to_distribute" && stat != "descriptions") {
-                state_.stats[stat] = value.get<int>();
-            }
-        }
-        state_.stat_points = char_base["points_to_distribute"].get<int>();
+        InitializeStats();
     }
 
-    // Основной цикл распределения очков
+    // РџРµСЂРІРѕРЅР°С‡Р°Р»СЊРЅРѕРµ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ СЃ РїРѕР»РЅС‹РјРё РѕРїРёСЃР°РЅРёСЏРјРё
+    DisplayStats(true);
+    first_display_ = false;
+
     while (state_.stat_points > 0) {
-        DisplayStats();
         DistributePoints();
     }
 
-    // После распределения сохраняем состояние
-    state_.flags["character_created"] = true;
-    std::cout << "\nСоздание персонажа завершено!\n";
+    FinalizeCreation();
 }
 
-void CharacterCreator::DisplayStats() {
+void CharacterCreator::InitializeStats() {
+    const auto& char_base = data_.Get("character_base");
+    for (const auto& [stat, value] : char_base.items()) {
+        if (stat != "points_to_distribute" && stat != "descriptions" &&
+            stat != "display_names" && stat != "name_lengths" && stat != "derived_stats") {
+            state_.stats[stat] = value.get<int>();
+        }
+    }
+    state_.stat_points = char_base["points_to_distribute"].get<int>();
+}
+
+void CharacterCreator::DisplayStats(bool full_descriptions) {
     const auto& char_base = data_.Get("character_base");
     const auto& descriptions = char_base["descriptions"];
+    const auto& display_names = char_base["display_names"];
+    const auto& name_lengths = char_base["name_lengths"];
 
-    std::cout << "\nОчки для распределения: " << state_.stat_points << "\n";
-    std::cout << "Характеристики:\n";
+    // Р Р°СЃСЃС‡РёС‚С‹РІР°РµРј РјР°РєСЃРёРјР°Р»СЊРЅСѓСЋ РґР»РёРЅСѓ РЅР°Р·РІР°РЅРёСЏ
+    int max_name_length = CalculateMaxNameLength();
 
-    // Выводим базовые характеристики
+    if (first_display_) {
+        std::cout << "\n============== РҐРђР РђРљРўР•Р РРЎРўРРљР РџР•Р РЎРћРќРђР–Рђ ==============\n";
+    }
+    else {
+        std::cout << "\n================================================\n";
+    }
+
+    // Р’С‹РІРѕРґРёРј Р±Р°Р·РѕРІС‹Рµ С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
     for (const auto& stat : { "melee", "ranged", "strength", "endurance", "dexterity", "intelligence" }) {
-        if (state_.stats.find(stat) != state_.stats.end()) {
-            std::cout << "  " << stat << ": " << state_.stats.at(stat);
-            if (descriptions.contains(stat)) {
-                std::cout << " - " << descriptions[stat].get<std::string>();
-            }
-            std::cout << "\n";
+        if (ShouldDisplayStat(stat)) {
+            DisplaySingleStat(stat, display_names, name_lengths, descriptions,
+                max_name_length, full_descriptions);
         }
     }
 
-    // Выводим производные характеристики
+    // Р Р°Р·РґРµР»РёС‚РµР»СЊ РјРµР¶РґСѓ Р±Р°Р·РѕРІС‹РјРё Рё РїСЂРѕРёР·РІРѕРґРЅС‹РјРё С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєР°РјРё
+    if (full_descriptions) {
+        std::cout << "\n-----------------------------------------------\n";
+    }
+
+    // Р’С‹РІРѕРґРёРј РїСЂРѕРёР·РІРѕРґРЅС‹Рµ С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
     for (const auto& stat : { "health", "willpower" }) {
-        if (state_.stats.find(stat) != state_.stats.end()) {
-            std::cout << "  " << stat << ": " << state_.stats.at(stat);
-            if (descriptions.contains(stat)) {
-                std::cout << " - " << descriptions[stat].get<std::string>();
-            }
-            std::cout << "\n";
+        if (ShouldDisplayStat(stat)) {
+            DisplaySingleStat(stat, display_names, name_lengths, descriptions,
+                max_name_length, full_descriptions);
         }
     }
+
+    std::cout << "================================================\n";
+}
+
+int CharacterCreator::CalculateMaxNameLength() const {
+    const auto& name_lengths = data_.Get("character_base")["name_lengths"];
+    int max_length = 0;
+
+    for (const auto& stat : { "melee", "ranged", "strength", "endurance",
+                            "dexterity", "intelligence", "health", "willpower" }) {
+        if (name_lengths.contains(stat)) {
+            int length = name_lengths[stat].get<int>();
+            if (length > max_length) max_length = length;
+        }
+    }
+
+    return max_length;
+}
+
+bool CharacterCreator::ShouldDisplayStat(const std::string& stat) const {
+    return state_.stats.find(stat) != state_.stats.end();
+}
+
+void CharacterCreator::DisplaySingleStat(const std::string& stat,
+    const nlohmann::json& display_names,
+    const nlohmann::json& name_lengths,
+    const nlohmann::json& descriptions,
+    int max_name_length,
+    bool show_description) {
+    std::string name = display_names.contains(stat) ?
+        display_names[stat].get<std::string>() : stat;
+
+    int name_len = name_lengths.contains(stat) ?
+        name_lengths[stat].get<int>() : name.length();
+
+    int padding = max_name_length - name_len;
+
+    std::cout << "  " << name << std::string(padding, ' ')
+        << ": " << std::setw(2) << state_.stats.at(stat);
+
+    if (show_description && descriptions.contains(stat)) {
+        std::string desc = descriptions[stat].get<std::string>();
+        // Р—Р°РјРµРЅСЏРµРј \n РЅР° СЂРµР°Р»СЊРЅС‹Рµ РїРµСЂРµРЅРѕСЃС‹ СЃС‚СЂРѕРє
+        size_t pos = 0;
+        while ((pos = desc.find("\\n", pos)) != std::string::npos) {
+            desc.replace(pos, 2, "\n    ");
+            pos += 3;
+        }
+        std::cout << " | " << desc;
+    }
+
+    std::cout << "\n";
 }
 
 void CharacterCreator::DistributePoints() {
-    // Создаем список доступных для улучшения характеристик
-    std::vector<std::string> upgradable_stats = {
-        "melee", "ranged", "strength", "endurance", "dexterity", "intelligence"
-    };
+    const auto& display_names = data_.Get("character_base")["display_names"];
+    const auto& name_lengths = data_.Get("character_base")["name_lengths"];
 
-    // Выводим меню выбора
-    std::cout << "\nВыберите характеристику для улучшения:\n";
-    for (size_t i = 0; i < upgradable_stats.size(); ++i) {
-        std::cout << i + 1 << ". " << upgradable_stats[i] << "\n";
-    }
-    std::cout << upgradable_stats.size() + 1 << ". Завершить распределение\n";
-
-    // Получаем выбор игрока
-    int choice = rpg_utils::Input::GetInt(1, upgradable_stats.size() + 1);
-
-    // Обработка выбора
-    if (choice <= static_cast<int>(upgradable_stats.size())) {
-        const std::string& selected_stat = upgradable_stats[choice - 1];
-        if (ApplyPoint(selected_stat)) {
-            std::cout << selected_stat << " увеличен на 1 пункт.\n";
-        }
-        else {
-            std::cout << "Недостаточно очков для улучшения.\n";
+    // Р Р°СЃСЃС‡РёС‚С‹РІР°РµРј РјР°РєСЃРёРјР°Р»СЊРЅСѓСЋ РґР»РёРЅСѓ РЅР°Р·РІР°РЅРёСЏ
+    int max_name_length = 0;
+    for (const auto& stat : { "melee", "ranged", "strength", "endurance",
+                            "dexterity", "intelligence" }) {
+        if (name_lengths.contains(stat)) {
+            int length = name_lengths[stat].get<int>();
+            if (length > max_name_length) max_name_length = length;
         }
     }
-    else {
-        state_.stat_points = 0; // Завершаем распределение
+
+    // Р’С‹РІРѕРґРёРј РјРµРЅСЋ РІС‹Р±РѕСЂР°
+    std::cout << "\nР’Р«Р‘Р•Р РРўР• РҐРђР РђРљРўР•Р РРЎРўРРљРЈ Р”Р›РЇ РЈР›РЈР§РЁР•РќРРЇ:\n";
+    int index = 1;
+    for (const auto& stat : { "melee", "ranged", "strength", "endurance", "dexterity", "intelligence" }) {
+        if (display_names.contains(stat) && name_lengths.contains(stat)) {
+            std::string name = display_names[stat].get<std::string>();
+            int name_len = name_lengths[stat].get<int>();
+            int padding = max_name_length - name_len;
+
+            std::cout << "  " << index++ << ". " << name << std::string(padding, ' ')
+                << " [" << state_.stats[stat] << "]\n";
+        }
+    }
+    std::cout << "  " << index << ". Р—Р°РІРµСЂС€РёС‚СЊ СЂР°СЃРїСЂРµРґРµР»РµРЅРёРµ\n";
+    std::cout << "-----------------------------------------------\n";
+
+    // РџРѕР»СѓС‡Р°РµРј РІС‹Р±РѕСЂ С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
+    int choice = rpg_utils::Input::GetInt(1, index);
+    if (choice == index) {
+        state_.stat_points = 0;
+        return;
+    }
+
+    // РџРѕР»СѓС‡Р°РµРј РєРѕР»РёС‡РµСЃС‚РІРѕ РѕС‡РєРѕРІ РґР»СЏ РІР»РѕР¶РµРЅРёСЏ
+    const std::string stat = GetStatByIndex(choice);
+    std::cout << "РЎРєРѕР»СЊРєРѕ РѕС‡РєРѕРІ РІР»РѕР¶РёС‚СЊ? (РґРѕСЃС‚СѓРїРЅРѕ: " << state_.stat_points << "): ";
+    int points = rpg_utils::Input::GetInt(1, state_.stat_points);
+
+    // РџСЂРёРјРµРЅСЏРµРј РёР·РјРµРЅРµРЅРёСЏ
+    if (ApplyPoints(stat, points)) {
+        std::string name = display_names.contains(stat) ?
+            display_names[stat].get<std::string>() : stat;
+
+        std::cout << "\n  >> РҐР°СЂР°РєС‚РµСЂРёСЃС‚РёРєР° '" << name << "' СѓР»СѓС‡С€РµРЅР° РЅР° "
+            << points << " РїСѓРЅРєС‚РѕРІ! РўРµРїРµСЂСЊ: " << state_.stats[stat] << "\n";
     }
 }
 
-bool CharacterCreator::ApplyPoint(const std::string& stat) {
-    if (state_.stat_points <= 0) return false;
+std::string CharacterCreator::GetStatByIndex(int index) {
+    const std::vector<std::string> stats = {
+        "melee", "ranged", "strength", "endurance", "dexterity", "intelligence"
+    };
+    return stats[index - 1];
+}
 
-    // Увеличиваем выбранную характеристику
-    state_.stats[stat]++;
-    state_.stat_points--;
+bool CharacterCreator::ApplyPoints(const std::string& stat, int points) {
+    if (points <= 0 || points > state_.stat_points) return false;
 
-    // Пересчитываем производные характеристики
+    // РЈРІРµР»РёС‡РёРІР°РµРј РІС‹Р±СЂР°РЅРЅСѓСЋ С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєСѓ
+    state_.stats[stat] += points;
+    state_.stat_points -= points;
+
+    // РџРµСЂРµСЃС‡РёС‚С‹РІР°РµРј РїСЂРѕРёР·РІРѕРґРЅС‹Рµ С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
     const auto& char_base = data_.Get("character_base");
     if (char_base.contains("derived_stats")) {
         const auto& derived_stats = char_base["derived_stats"];
@@ -110,15 +204,26 @@ bool CharacterCreator::ApplyPoint(const std::string& stat) {
 
                 if (tokens.size() == 3 && tokens[1] == "*") {
                     if (tokens[0] == stat) {
-                        state_.stats[derived_stat] = state_.stats[stat] * std::stoi(tokens[2]);
+                        int multiplier = std::stoi(tokens[2]);
+                        state_.stats[derived_stat] = state_.stats[stat] * multiplier;
                     }
                 }
             }
             catch (...) {
-                // Игнорируем ошибки расчета производных характеристик
+                // РРіРЅРѕСЂРёСЂСѓРµРј РѕС€РёР±РєРё СЂР°СЃС‡РµС‚Р°
             }
         }
     }
 
     return true;
+}
+
+void CharacterCreator::FinalizeCreation() {
+    state_.flags["character_created"] = true;
+    std::cout << "\n================================================\n";
+    std::cout << "         РЎРћР—Р”РђРќРР• РџР•Р РЎРћРќРђР–Рђ Р—РђР’Р•Р РЁР•РќРћ!\n";
+    std::cout << "================================================\n";
+
+    // Р’С‹РІРѕРґРёРј С„РёРЅР°Р»СЊРЅС‹Рµ С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
+    DisplayStats(false);
 }

@@ -1,7 +1,5 @@
 #include "GameEngine.h"
 #include <stdexcept>
-#include <iostream>
-
 
 GameEngine::GameEngine(const std::string& data_path)
     : data_(),
@@ -17,10 +15,7 @@ GameEngine::GameEngine(const std::string& data_path)
     InitializeGameState();
 }
 
-void GameEngine::Run() {                                                   
-    std::cout << "=== ЗАПУСК ИГРЫ ===\n";
-
-    // Основной игровой цикл
+void GameEngine::Run() {
     while (true) {
         if (state_.active_type == "scene") {
             scene_processor_.Process(state_.active_id);
@@ -36,16 +31,10 @@ void GameEngine::Run() {
         }
         else if (state_.active_type == "ending") {
             ending_processor_.Process(state_.active_id);
-            // После концовки завершаем игру
-            std::cout << "\nИгра завершена. Спасибо за прохождение!\n";
             break;
         }
         else if (state_.active_type == "exit") {
-            std::cout << "\nВыход из игры...\n";
             break;
-        }
-        else {
-            throw std::runtime_error("Unknown game state: " + state_.active_type);
         }
     }
 }

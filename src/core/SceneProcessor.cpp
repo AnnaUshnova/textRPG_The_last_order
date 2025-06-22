@@ -15,7 +15,7 @@ void SceneProcessor::Process(const std::string& scene_id) {
         throw std::runtime_error("No valid choices for scene: " + scene_id);
     }
 
-    std::cout << "\nВаши действия:\n";
+    std::cout << "\nР’Р°С€Рё РґРµР№СЃС‚РІРёСЏ:\n";
     for (size_t i = 0; i < choices.size(); ++i) {
         std::cout << i + 1 << ". " << choices[i].text << "\n";
     }
@@ -165,23 +165,26 @@ void SceneProcessor::ExecuteChoice(const Choice& choice) {
 
 void SceneProcessor::ProcessTransition(const std::string& target) {
     if (target.rfind("combat_", 0) == 0) {
-        // Боевая сцена
+        // Р‘РѕРµРІР°СЏ СЃС†РµРЅР°
         state_.active_type = "combat";
         state_.combat_enemy = target;
-        state_.combat_player_health = state_.stats.at("health");
+        state_.combat_player_health = state_.current_health;
         state_.combat_enemy_health = data_.Get("combat", target)["health"].get<int>();
-        state_.player_turn = true;  // Игрок ходит первым
+        state_.player_turn = true;
     }
     else if (target.rfind("ending", 0) == 0) {
-        // Концовка
+        // РљРѕРЅС†РѕРІРєР°
         state_.active_type = "ending";
         state_.active_id = target;
-        // Добавляем концовку в список открытых
         state_.unlocked_endings.insert(target);
     }
-    else if (target.rfind("scene", 0) == 0 ||
-        target == "character_creation") {
-        // Обычная сцена
+    else if (target == "character_creation") {
+        // РЎРѕР·РґР°РЅРёРµ РїРµСЂСЃРѕРЅР°Р¶Р°
+        state_.active_type = "character_creation";
+        state_.active_id = target;
+    }
+    else if (target.rfind("scene", 0) == 0) {
+        // РћР±С‹С‡РЅР°СЏ СЃС†РµРЅР°
         state_.active_type = "scene";
         state_.active_id = target;
     }
