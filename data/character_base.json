@@ -8,6 +8,9 @@
     "ranged": 8
   },
   "points_to_distribute": 20,
+  "character_creation_settings": {
+    "max_increment_per_step": 20
+  },
   "display_names": {
     "strength": "Сила",
     "dexterity": "Ловкость",
@@ -17,6 +20,16 @@
     "ranged": "Дальний бой",
     "health": "Здоровье",
     "willpower": "Сила воли"
+  },
+  "name_lengths": {
+    "strength": 4,
+    "dexterity": 8,
+    "endurance": 12,
+    "intelligence": 9,
+    "melee": 11,
+    "ranged": 11,
+    "health": 8,
+    "willpower": 9
   },
   "descriptions": {
     "melee": "Навык ближнего боя:\\n- Влияет на точность и урон в рукопашных атаках\\n- Повышает шанс критического удара",
@@ -36,6 +49,7 @@
     "melee",
     "ranged"
   ],
+  "start_scene": "intro_scene",
   "derived_stats_formulas": {
     "health": "endurance * 2",
     "willpower": "intelligence * 2"

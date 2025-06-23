@@ -10,16 +10,16 @@
     ],
     "choices": [
       {
-        "text": "Новая игра",
+        "text": "Начать новую игру",
         "next_target": "scene1"
       },
       {
-        "text": "Просмотр концовок",
+        "text": "Просмотреть концовки",
         "next_target": "endings_collection"
       },
       {
         "text": "Выход",
-        "action": "quit_game"
+        "next_target": "quit_game"
       }
     ]
   },
@@ -151,16 +151,17 @@
     ]
   },
 
+
   "character_creation": {
     "id": "character_creation",
     "text": [
       "Создание персонажа",
       "Распределите характеристики вашего бойца"
     ],
+    "auto_action": "start_creation",
     "choices": [
       {
         "text": "Создать персонажа",
-        "condition": "!flags.ready_for_character_creation",
         "next_target": "scene7"
       }
     ]
@@ -453,9 +454,4 @@
       "auto_action": "show_endings"
     }
   }
-
-
-
-
-
 }
