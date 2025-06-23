@@ -1,11 +1,12 @@
 #ifndef RPG_CHARACTER_CREATOR_H_
 #define RPG_CHARACTER_CREATOR_H_
 
-#include "CharacterLoader.h"  // Добавляем новый заголовочный файл
 #include "DataManager.h"
 #include "GameState.h"
 #include "Utils.h"
-#include <iomanip>
+#include <vector>
+#include <string>
+#include <unordered_map>
 
 class CharacterCreator {
 public:
@@ -13,25 +14,24 @@ public:
     void Process();
 
 private:
-    void InitializeStats();
-    void DisplayStats(bool full_descriptions);
+    struct CharacterConfig {
+        std::vector<std::string> core_stats;
+        std::unordered_map<std::string, std::string> display_names;
+        std::unordered_map<std::string, std::string> descriptions;
+    };
+
+    void ShowWelcomeScreen();
     void DistributePoints();
-    void FinalizeCreation();
-    void DisplayInventory();
-    int CalculateMaxNameLength() const;
-    bool ShouldDisplayStat(const std::string& stat) const;
-    void DisplaySingleStat(const std::string& stat,
-        const nlohmann::json& display_names,
-        const nlohmann::json& name_lengths,
-        const nlohmann::json& descriptions,
-        int max_name_length,
-        bool show_description);
-    std::string GetStatByIndex(int index);
-    bool ApplyPoints(const std::string& stat, int points);
+    void FinalizeCharacter();
+    void ShowSummary();
+    void DisplayStats(bool show_descriptions = true);
+    CharacterConfig LoadConfig() const;
+    void ApplyPointToStat(const std::string& stat);
+    void CalculateDerivedStats();
+    int GetStatIndexInput() const;
 
     DataManager& data_;
     GameState& state_;
-    bool first_display_;
 };
 
 #endif  // RPG_CHARACTER_CREATOR_H_

@@ -1,4 +1,28 @@
 ﻿{
+
+  "main_menu": {
+    "id": "main_menu",
+    "text": [
+      "===================================",
+      "          ПОСЛЕДНИЙ ПРИКАЗ         ",
+      "===================================",
+      ""
+    ],
+    "choices": [
+      {
+        "text": "Новая игра",
+        "next_target": "scene1"
+      },
+      {
+        "text": "Просмотр концовок",
+        "next_target": "endings_collection"
+      },
+      {
+        "text": "Выход",
+        "action": "quit_game"
+      }
+    ]
+  },
   "scene1": {
     "id": "scene1",
     "text": [
@@ -12,7 +36,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_scene": "scene2"
+        "next_target": "scene2"
       }
     ]
   },
@@ -32,7 +56,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_scene": "scene3"
+        "next_target": "scene3"
       }
     ]
   },
@@ -49,7 +73,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_scene": "scene4"
+        "next_target": "scene4"
       }
     ]
   },
@@ -70,7 +94,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_scene": "scene5"
+        "next_target": "scene5"
       }
     ]
   },
@@ -94,7 +118,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_scene": "scene6"
+        "next_target": "scene6"
       }
     ]
   },
@@ -122,7 +146,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_scene": "character_creation"
+        "next_target": "character_creation"
       }
     ]
   },
@@ -137,11 +161,13 @@
       {
         "text": "Создать персонажа",
         "condition": "!flags.ready_for_character_creation",
-        "next_scene": "scene7"
+        "next_target": "scene7"
       }
     ]
 
   },
+
+
   "scene7": {
     "id": "scene7",
     "text": [
@@ -157,52 +183,62 @@
       {
         "id": "inspect_bodies",
         "text": "Осмотреть тела",
+        "condition": "!flags.bodies_inspected",
+        "effects": {
+          "set_flags": { "bodies_inspected": true }
+        },
         "check": {
           "type": "intelligence",
-          "difficulty": -2
-        },
-        "next_success": "scene7_1_success",
-        "next_fail": "scene7_1_fail",
-        "condition": "!flags.bodies_inspected",
-        "flag_to_set": "choice_inspect_bodies_done"
+          "difficulty": -2,
+          "results": {
+            "success": "scene7_1_success",
+            "fail": "scene7_1_fail"
+          }
+        }
       },
       {
         "id": "search_hold",
         "text": "Обыскать трюм",
+        "condition": "!flags.supplies_found",
+        "effects": {
+          "set_flags": { "supplies_found": true }
+        },
         "check": {
           "type": "intelligence",
-          "difficulty": 0
-        },
-        "next_success": "scene7_2_success",
-        "next_fail": "scene7_2_fail",
-        "condition": "!flags.supplies_found",
-        "flag_to_set": "choice_search_hold_done"
+          "difficulty": 0,
+          "results": {
+            "success": "scene7_2_success",
+            "fail": "scene7_2_fail"
+          }
+        }
       },
       {
         "id": "to_elevator",
         "text": "К лифту",
+        "condition": "!flags.mutant_defeated",
+        "effects": {
+          "set_flags": { "mutant_encountered": true }
+        },
         "check": {
           "type": "dexterity",
-          "difficulty": -4
-        },
-        "next_success": "scene7_3_success",
-        "next_fail": "scene7_3_fail",
-        "condition": "!flags.mutant_defeated",
-        "flag_to_set": "choice_to_elevator_done"
+          "difficulty": -4,
+          "results": {
+            "success": "scene7_3_success",
+            "fail": "scene7_3_fail"
+          }
+        }
       },
       {
         "id": "continue_to_elevator",
         "text": "Продолжить к лифту",
-        "next_scene": "scene8",
         "condition": "flags.mutant_defeated",
-        "flag_to_set": "choice_continue_done"
+        "next_target": "scene8"
       },
       {
         "id": "return_to_inspection",
         "text": "Вернуться к осмотру",
-        "next_scene": "scene7",
         "condition": "flags.mutant_defeated && (!flags.bodies_inspected || !flags.supplies_found)",
-        "flag_to_set": "choice_return_done"
+        "next_target": "scene7"
       }
     ]
   },
@@ -226,44 +262,50 @@
       {
         "id": "inspect_surroundings",
         "text": "Осмотреться",
+        "condition": "!flags.scene8_inspected",
+        "effects": {
+          "set_flags": { "scene8_inspected": true }
+        },
         "check": {
           "type": "intelligence",
-          "difficulty": 2
-        },
-        "critical_success": "scene8_intelligence_critical",
-        "success": "scene8_intelligence_success",
-        "fail": "scene8_intelligence_fail",
-        "condition": "!flags.scene8_inspected",
-        "flag_to_set": "scene8_inspected"
+          "difficulty": 2,
+          "results": {
+            "critical_success": "scene8_intelligence_critical",
+            "success": "scene8_intelligence_success",
+            "fail": "scene8_intelligence_fail"
+          }
+        }
       },
       {
         "id": "move_dexterityily",
         "text": "Двигаться скрытно",
+        "condition": "flags.scene8_inspected",
         "check": {
           "type": "dexterity",
-          "difficulty": -1
-        },
-        "success": "scene9",
-        "fail": "ending3",
-        "condition": "flags.scene8_inspected"
+          "difficulty": -1,
+          "results": {
+            "success": "scene9",
+            "fail": "ending3"
+          }
+        }
       },
       {
         "id": "move_openly",
         "text": "Двигаться открыто",
-        "next_scene": "ending4",
-        "condition": "flags.scene8_inspected"
+        "condition": "flags.scene8_inspected",
+        "next_target": "ending4"
       },
       {
         "id": "set_trap",
         "text": "Заманить в ловушку",
-        "next_scene": "scene8_trap_option",
-        "condition": "flags.scene8_intelligence_critical"
+        "condition": "flags.scene8_perception_critical",
+        "next_target": "scene8_trap_option"
       },
       {
         "id": "return_to_choice",
         "text": "Вернуться к выбору",
-        "next_scene": "scene8",
-        "condition": "flags.scene8_inspected"
+        "condition": "flags.scene8_inspected",
+        "next_target": "scene8"
       }
     ]
   },
@@ -285,15 +327,17 @@
         "text": "Попытаться заманить",
         "check": {
           "type": "willpower",
-          "difficulty": -3
-        },
-        "success": "scene9",
-        "fail": "ending2"
+          "difficulty": -3,
+          "results": {
+            "success": "scene9",
+            "fail": "ending2"
+          }
+        }
       },
       {
         "id": "retreat",
         "text": "Отступить",
-        "next_scene": "scene8"
+        "next_target": "scene8"
       }
     ]
   },
@@ -314,24 +358,28 @@
         "text": "Прорваться",
         "check": {
           "type": "endurance",
-          "difficulty": -2
-        },
-        "critical_success": "scene9_2_critical",
-        "success": "scene9_2_success",
-        "fail": "scene9_2_fail",
-        "critical_fail": "scene9_2_critical_fail"
+          "difficulty": -2,
+          "results": {
+            "critical_success": "scene9_2_critical",
+            "success": "scene9_2_success",
+            "fail": "scene9_2_fail",
+            "critical_fail": "scene9_2_critical_fail"
+          }
+        }
       },
       {
         "id": "analyze_route",
         "text": "Проанализировать маршрут",
         "check": {
           "type": "intelligence",
-          "difficulty": 1
-        },
-        "critical_success": "scene9_3_critical",
-        "success": "scene9_3_success",
-        "fail": "scene9_3_fail",
-        "critical_fail": "scene9_3_critical_fail"
+          "difficulty": 1,
+          "results": {
+            "critical_success": "scene9_3_critical",
+            "success": "scene9_3_success",
+            "fail": "scene9_3_fail",
+            "critical_fail": "scene9_3_critical_fail"
+          }
+        }
       }
     ]
   },
@@ -355,7 +403,7 @@
     "choices": [
       {
         "text": "Начать бой",
-        "next_scene": "combat_tech_heretic"
+        "next_target": "combat_tech_heretic"
       }
     ]
   },
@@ -371,7 +419,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_scene": "scene12"
+        "next_target": "scene12"
       }
     ]
   },
@@ -392,8 +440,22 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_scene": "ending10"
+        "next_target": "ending10"
       }
     ]
+  },
+  "endings_collection": {
+    "id": "endings_collection",
+    "text": [
+      "Здесь собраны все концовки, которые вам удалось открыть в ходе игры."
+    ],
+    "effects": {
+      "auto_action": "show_endings"
+    }
   }
+
+
+
+
+
 }

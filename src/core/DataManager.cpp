@@ -1,91 +1,95 @@
 #include "DataManager.h"
-#include "Utils.h"
+#include "SceneProcessor.h"
 #include <fstream>
-#include <stdexcept>
+#include <filesystem>
+#include <iostream>
 
-namespace {
-    const std::unordered_map<std::string, std::string> kDataFiles = {
-        {"character_base", "character_base.json"},
-        {"checks", "checks.json"},
-        {"combat", "combat.json"},
-        {"endings", "endings.json"},
-        {"game_state", "game_state.json"},
-        {"items", "items.json"},
-        {"scenes", "scenes.json"}
-    };
-}  // namespace
+namespace fs = std::filesystem;
+using json = nlohmann::json;
 
 void DataManager::LoadAll(const std::string& data_dir) {
-    data_path_ = data_dir;
-    if (data_path_.back() != '/') {
-        data_path_ += '/';
+    data_sets_.clear();
+
+    // Загрузка с явным указанием путей
+    LoadJsonFile(data_dir + "/character_base.json", "character_base");
+    LoadJsonFile(data_dir + "/scenes.json", "scenes");
+    LoadJsonFile(data_dir + "/combats.json", "combats");
+    LoadJsonFile(data_dir + "/endings.json", "endings");
+
+    // Проверка загрузки
+    for (const auto& type : { "character_base", "scenes", "combats", "endings" }) {
+        if (data_sets_.find(type) == data_sets_.end()) {
+            std::cerr << "WARNING: Failed to load " << type << " dataset\n";
+        }
     }
+}
 
-    for (const auto& [data_type, filename] : kDataFiles) {
-        const std::string full_path = data_path_ + filename;
-        std::ifstream file(full_path);
-
+void DataManager::LoadJsonFile(const std::string& filename, const std::string& type) {
+    try {
+        std::ifstream file(filename);
         if (!file.is_open()) {
-            throw std::runtime_error("Failed to open data file: " + full_path);
+            std::cerr << "ERROR: Can't open file: " << filename << "\n";
+            return;
         }
 
-        try {
-            data_sets_[data_type] = nlohmann::json::parse(file);
-        }
-        catch (const nlohmann::json::parse_error& e) {
-            throw std::runtime_error("JSON parse error in " + filename +
-                ": " + e.what());
-        }
+        nlohmann::json data;
+        file >> data;
+        data_sets_[type] = data;
+        std::cout << "Loaded: " << filename << "\n";
+    }
+    catch (const std::exception& e) {
+        std::cerr << "ERROR loading " << filename << ": " << e.what() << "\n";
     }
 }
 
-const nlohmann::json& DataManager::Get(const std::string& type, const std::string& id) const {
-    const auto it = data_sets_.find(type);
-    if (it == data_sets_.end()) {
-        throw std::out_of_range("Unknown data type: " + type);
-    }
-
-    // Если ID пустой, возвращаем весь набор данных
-    if (id.empty()) {
-        return it->second;
-    }
-
-    // Для типа "checks" ищем конкретную проверку
-    if (type == "checks") {
-        if (!it->second.contains(id)) {
-            throw std::out_of_range("Check not found: " + id);
-        }
-        return it->second.at(id);
-    }
-
-    // Общая обработка для других типов
-    if (!it->second.contains(id)) {
-        throw std::out_of_range("ID not found: " + id + " in type: " + type);
-    }
-
-    return it->second.at(id);
-}
 
 
-nlohmann::json& DataManager::GetMutable(const std::string& type) {
+const nlohmann::json& DataManager::Get(const std::string& type) const {
     auto it = data_sets_.find(type);
     if (it == data_sets_.end()) {
-        throw std::out_of_range("Unknown data type: " + type);
+        std::cerr << "ERROR: Requested data type not found: " << type << "\n";
+        static nlohmann::json empty = nlohmann::json::object();
+        return empty;
     }
     return it->second;
 }
 
-void DataManager::Save(const std::string& type) {
-    const auto file_it = kDataFiles.find(type);
-    if (file_it == kDataFiles.end()) {
-        throw std::out_of_range("Unknown data type for save: " + type);
+const nlohmann::json& DataManager::Get(const std::string& type, const std::string& id) const {
+    const auto& dataset = Get(type);
+
+    if (!dataset.contains(id)) {
+        std::cerr << "ERROR: ID '" << id << "' not found in dataset '" << type << "'\n";
+        std::cerr << "Available IDs: ";
+        for (const auto& [key, value] : dataset.items()) {
+            std::cerr << key << " ";
+        }
+        std::cerr << "\n";
+
+        static nlohmann::json empty = nlohmann::json::object();
+        return empty;
     }
 
-    const std::string full_path = data_path_ + file_it->second;
-    std::ofstream file(full_path);
-    if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file for writing: " + full_path);
-    }
-
-    file << data_sets_.at(type).dump(2);  // Pretty print with 2-space indent
+    return dataset[id];
 }
+
+
+
+
+void DataManager::ValidateData() const {
+    const std::vector<std::string> required_datasets = {
+        "character_base", "scenes", "combats", "endings"
+    };
+
+    for (const auto& type : required_datasets) {
+        if (data_sets_.find(type) == data_sets_.end()) {
+            throw std::runtime_error("Missing required dataset: " + type);
+        }
+    }
+
+    // Проверка базовых характеристик персонажа
+    const auto& char_data = Get("character_base");
+    if (!char_data.contains("base_stats") || char_data["base_stats"].empty()) {
+        throw std::runtime_error("character_base.json has invalid 'base_stats'");
+    }
+}
+

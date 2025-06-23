@@ -1,257 +1,372 @@
 #include "Utils.h"
-#include <sstream>
+#include "DataManager.h"
+#include "GameState.h"
+#include "SceneProcessor.h"
 #include <algorithm>
 #include <cctype>
-#include <random>
 #include <iostream>
-#include <limits>
-#include <fstream>
+#include <random>
 #include <sstream>
+#include <cmath>
+#include <stack>
+#include <map>
+#include <functional>
 
 namespace rpg_utils {
 
-    // String utilities
+    using json = nlohmann::json;
 
+    // ===== String Utilities =====
     std::vector<std::string> Split(const std::string& str, char delimiter) {
         std::vector<std::string> tokens;
-        std::istringstream stream(str);
         std::string token;
-
-        while (std::getline(stream, token, delimiter)) {
-            if (!token.empty()) {
-                tokens.push_back(token);
-            }
+        std::istringstream tokenStream(str);
+        while (std::getline(tokenStream, token, delimiter)) {
+            tokens.push_back(token);
         }
-
         return tokens;
     }
 
     std::string Trim(const std::string& str) {
-        size_t start = 0;
-        size_t end = str.size();
-
-        // Trim from start
-        while (start < end && std::isspace(static_cast<unsigned char>(str[start]))) {
-            start++;
-        }
-
-        // Trim from end
-        while (end > start && std::isspace(static_cast<unsigned char>(str[end - 1]))) {
-            end--;
-        }
-
-        return str.substr(start, end - start);
+        size_t first = str.find_first_not_of(' ');
+        if (first == std::string::npos) return "";
+        size_t last = str.find_last_not_of(' ');
+        return str.substr(first, (last - first + 1));
     }
 
     std::string ToLower(const std::string& str) {
-        std::string result = str;
-        std::transform(result.begin(), result.end(), result.begin(),
+        std::string lower = str;
+        std::transform(lower.begin(), lower.end(), lower.begin(),
             [](unsigned char c) { return std::tolower(c); });
-        return result;
+        return lower;
     }
 
-    // Game utilities
-
-    int RollDice(int count, int sides) {
-        if (count <= 0 || sides <= 0) return 0;
-
+    // ===== Dice and Roll Systems =====
+    RollDetails RollDiceWithModifiers(
+        int base_value,
+        int modifier,
+        int critical_threshold
+    ) {
         static std::random_device rd;
         static std::mt19937 gen(rd());
-        std::uniform_int_distribution<int> dist(1, sides);
+        std::uniform_int_distribution<int> dist(1, 100);
 
-        int result = 0;
-        std::cout << "Бросок " << count << "d" << sides << ": [";
-        for (int i = 0; i < count; ++i) {
-            int roll = dist(gen);
-            result += roll;
-            std::cout << roll;
-            if (i < count - 1) std::cout << " + ";
+        RollDetails result;
+        result.total_roll = dist(gen);
+        int critical_range = critical_threshold;
+
+        if (result.total_roll <= critical_range) {
+            result.result = RollResultType::kCriticalSuccess;
+            result.result_str = "Критический успех!";
         }
-        std::cout << "] = " << result << "\n";
+        else if (result.total_roll >= 100 - critical_range) {
+            result.result = RollResultType::kCriticalFail;
+            result.result_str = "Критическая неудача!";
+        }
+        else if (result.total_roll + modifier >= base_value) {
+            result.result = RollResultType::kSuccess;
+            result.result_str = "Успех";
+        }
+        else {
+            result.result = RollResultType::kFail;
+            result.result_str = "Неудача";
+        }
 
         return result;
     }
 
-    bool EvaluateCondition(const std::string& condition,
-        const std::unordered_map<std::string, bool>& flags) {
-        if (condition.empty()) return true;
+    RollDetails CalculateRoll(
+        const std::string& stat_name,
+        int difficulty,
+        const GameState& state,
+        const std::string& context
+    ) {
+        int stat_value = state.stats.at(stat_name);
+        auto result = RollDiceWithModifiers(stat_value, difficulty);
 
-        std::string trimmed = Trim(condition);
-
-        // Handle complex conditions with logical operators
-        if (trimmed.find("&&") != std::string::npos) {
-            auto parts = Split(trimmed, '&');
-            for (const auto& part : parts) {
-                if (!EvaluateCondition(Trim(part), flags)) return false;
-            }
-            return true;
+        if (!context.empty()) {
+            std::cout << context << ": "
+                << result.total_roll << " ("
+                << result.result_str << ")\n";
         }
 
-        if (trimmed.find("||") != std::string::npos) {
-            auto parts = Split(trimmed, '|');
-            for (const auto& part : parts) {
-                if (EvaluateCondition(Trim(part), flags)) return true;
-            }
-            return false;
-        }
-
-        // Handle negation
-        if (trimmed[0] == '!') {
-            std::string flag = Trim(trimmed.substr(1));
-            return !(flags.find(flag) != flags.end() && flags.at(flag));
-        }
-
-        // Simple flag check
-        return flags.find(trimmed) != flags.end() && flags.at(trimmed);
+        return result;
     }
 
-    void ApplyEffects(const nlohmann::json& effects, GameState& state) {
-        if (effects.is_null()) return;
+    // ===== Condition Evaluation =====
+    float EvaluateSimpleExpression(const std::string& expr) {
+        std::istringstream iss(expr);
+        std::string token;
+        float result = 0.0f;
+        float current = 0.0f;
+        char op = '+';
 
-#ifdef DEBUG
-        std::cout << "Applying effects: " << effects.dump() << "\n";
-#endif
+        while (iss >> token) {
+            if (token == "+" || token == "-" || token == "*" || token == "/") {
+                op = token[0];
+            }
+            else {
+                try {
+                    current = std::stof(token);
 
-        // Обработка set_flags
-        if (effects.contains("set_flags")) {
-            const auto& flags = effects["set_flags"];
-            if (flags.is_object()) {
-                for (auto it = flags.begin(); it != flags.end(); ++it) {
-                    state.flags[it.key()] = it.value().get<bool>();
+                    switch (op) {
+                    case '+': result += current; break;
+                    case '-': result -= current; break;
+                    case '*': result *= current; break;
+                    case '/':
+                        if (std::fabs(current) > 1e-5) result /= current;
+                        break;
+                    default: break;
+                    }
+                }
+                catch (const std::exception& e) {
+                    std::cerr << "Ошибка вычисления выражения: " << e.what() << "\n";
                 }
             }
         }
 
-        // Обработка add_items
-        if (effects.contains("add_items") && effects["add_items"].is_array()) {
+        return result;
+    }
+
+
+    // ===== Game Effects =====
+    void ApplyGameEffects(const json& effects, GameState& state) {
+        // Установка флагов
+        if (effects.contains("set_flags")) {
+            for (const auto& [flag, value] : effects["set_flags"].items()) {
+                state.flags[flag] = value.get<bool>();
+            }
+        }
+
+        // Добавление предметов
+        if (effects.contains("add_items")) {
             for (const auto& item : effects["add_items"]) {
                 state.inventory.push_back(item.get<std::string>());
             }
         }
 
-        // Обработка remove_items
-        if (effects.contains("remove_items") && effects["remove_items"].is_array()) {
-            for (const auto& item : effects["remove_items"]) {
-                auto it = std::find(state.inventory.begin(), state.inventory.end(),
-                    item.get<std::string>());
-                if (it != state.inventory.end()) {
-                    state.inventory.erase(it);
-                }
+        // Разблокировка концовок
+        if (effects.contains("unlock_ending")) {
+            state.unlocked_endings.insert(
+                effects["unlock_ending"].get<std::string>()
+            );
+        }
+
+        // Модификация характеристик
+        if (effects.contains("modify_stats")) {
+            for (const auto& [stat, value] : effects["modify_stats"].items()) {
+                state.stats[stat] += value.get<int>();
             }
         }
     }
+  
 
-    int CalculateStat(const std::string& stat_name,
-        const std::unordered_map<std::string, int>& stats,
-        const DataManager& data) {
-        // Проверка базовых характеристик
-        if (stats.find(stat_name) != stats.end()) {
-            return stats.at(stat_name);
+    // ===== Damage Calculation =====
+    int CalculateDamage(const std::string& dice_formula) {
+        size_t d_pos = dice_formula.find('d');
+        if (d_pos == std::string::npos) {
+            // Просто число без кубиков
+            return std::stoi(dice_formula);
         }
 
-        try {
-            const auto& char_base = data.Get("character_base");
-            if (!char_base.contains("derived_stats")) return 0;
-
-            const auto& derived = char_base["derived_stats"];
-            if (!derived.contains(stat_name)) return 0;
-
-            const std::string& formula = derived[stat_name].get<std::string>();
-            auto tokens = Split(Trim(formula), ' ');
-
-            if (tokens.size() != 3) return 0;
-
-            if (tokens[1] == "*") {
-                int base_value = CalculateStat(tokens[0], stats, data);
-                int multiplier = std::stoi(tokens[2]);
-                return base_value * multiplier;
-            }
-            else if (tokens[1] == "+") {
-                int base_value = CalculateStat(tokens[0], stats, data);
-                int add_value = std::stoi(tokens[2]);
-                return base_value + add_value;
-            }
-        }
-        catch (const std::exception& e) {
-            // Логирование ошибки в релизной версии
-#ifdef DEBUG
-            std::cerr << "Stat calculation error: " << e.what() << std::endl;
-#endif
+        int count = 1;
+        if (d_pos > 0) {
+            count = std::stoi(dice_formula.substr(0, d_pos));
         }
 
-        return 0;
+        size_t modifier_pos = dice_formula.find_first_of("+-", d_pos + 1);
+        int sides = 0;
+        int modifier = 0;
+
+        if (modifier_pos != std::string::npos) {
+            sides = std::stoi(dice_formula.substr(d_pos + 1, modifier_pos - d_pos - 1));
+            modifier = std::stoi(dice_formula.substr(modifier_pos));
+        }
+        else {
+            sides = std::stoi(dice_formula.substr(d_pos + 1));
+        }
+
+        // Бросок кубиков
+        int total = 0;
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> dist(1, sides);
+
+        for (int i = 0; i < count; ++i) {
+            total += dist(gen);
+        }
+
+        return total + modifier;
     }
 
-    // Input handling
-
- // Реализация методов класса Input
+    // ===== Input Handling =====
     int Input::GetInt(int min, int max) {
-        int value;
         while (true) {
-            std::cout << "> ";
             std::string input;
             std::getline(std::cin, input);
 
             try {
-                value = std::stoi(input);
-                if (value >= min && value <= max) {
-                    return value;
+                int value = std::stoi(input);
+                if (value < min || value > max) {
+                    std::cout << "Введите значение между " << min << " и " << max << ": ";
+                    continue;
                 }
+                return value;
             }
-            catch (...) {
-                // Обработка ошибок преобразования
+            catch (const std::exception& e) {
+                std::cout << "Неверный ввод. Пожалуйста, введите целое число: ";
             }
-
-            std::cout << "Некорректный ввод. Введите число от " << min << " до " << max << ".\n";
         }
     }
 
 
     std::string Input::GetLine() {
         std::string input;
-        std::cout << "> ";
         std::getline(std::cin, input);
         return input;
     }
 
-    // Реализация RollWithDetails
-    RollDetails RollWithDetails(int target_value) {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<int> dist(1, 20); // Бросок d20
+    RollDetails ResolveAttack(
+        const json& attack,
+        const std::unordered_map<std::string, int>& attacker_stats) {
+        int base_value = attacker_stats.at(attack["stat"].get<std::string>());
+        int difficulty = attack.value("difficulty", 0);
 
-        RollDetails details;
-        details.total_roll = dist(gen);
-
-        if (details.total_roll == 20) {
-            details.result = RollResultType::kCriticalSuccess;
-            details.result_str = "Критический успех!";
-        }
-        else if (details.total_roll == 1) {
-            details.result = RollResultType::kCriticalFail;
-            details.result_str = "Критический провал!";
-        }
-        else if (details.total_roll >= target_value) {
-            details.result = RollResultType::kSuccess;
-            details.result_str = "Успех";
-        }
-        else {
-            details.result = RollResultType::kFail;
-            details.result_str = "Провал";
-        }
-
-        return details;
+        return RollDiceWithModifiers(base_value, difficulty);
     }
 
-    // Реализация PrintRollDetails
-    void PrintRollDetails(const std::string& context, int base_value, int modifier, int target_value, const RollDetails& roll) {
-        std::cout << "\n--- Бросок: " << context << " ---\n";
-        std::cout << "База: " << base_value << " + Модификатор: " << modifier;
-        std::cout << " = Цель: " << target_value << "\n";
-        std::cout << "Результат броска: " << roll.total_roll << " -> ";
-        std::cout << roll.result_str << "\n";
-        std::cout << "--------------------------------\n";
+    float ParseFormula(const std::string& formula, const std::unordered_map<std::string, int>& stats) {
+        // Простая замена переменных значениями
+        std::string processed = formula;
+        for (const auto& [stat, value] : stats) {
+            size_t pos = 0;
+            while ((pos = processed.find(stat, pos)) != std::string::npos) {
+                processed.replace(pos, stat.length(), std::to_string(value));
+                pos += std::to_string(value).length();
+            }
+        }
+
+        // Теперь вычисляем простое математическое выражение
+        std::istringstream iss(processed);
+        std::string token;
+        float result = 0;
+        float current = 0;
+        char op = '+';
+
+        while (iss >> token) {
+            if (token == "+" || token == "-" || token == "*" || token == "/") {
+                op = token[0];
+            }
+            else {
+                try {
+                    current = std::stof(token);
+
+                    switch (op) {
+                    case '+': result += current; break;
+                    case '-': result -= current; break;
+                    case '*': result *= current; break;
+                    case '/':
+                        if (std::fabs(current) > 1e-5) result /= current;
+                        break;
+                    default: break;
+                    }
+                }
+                catch (const std::exception& e) {
+                    std::cerr << "ERROR parsing token '" << token << "' in formula: " << formula << "\n";
+                }
+            }
+        }
+
+        return result;
     }
 
+    void CalculateDerivedStats(GameState& state, const nlohmann::json& character_base) {
+        if (!character_base.contains("derived_stats_formulas")) {
+            return;
+        }
+
+        const auto& formulas = character_base["derived_stats_formulas"];
+
+        for (const auto& [derived_stat, formula] : formulas.items()) {
+            try {
+                std::string formula_str = formula.get<std::string>();
+                std::string processed = formula_str;
+
+                // Заменяем названия характеристик на их значения
+                for (const auto& [stat, value] : state.stats) {
+                    size_t pos = 0;
+                    while ((pos = processed.find(stat, pos)) != std::string::npos) {
+                        processed.replace(pos, stat.length(), std::to_string(value));
+                        pos += std::to_string(value).length();
+                    }
+                }
+
+                // Вычисляем результат
+                float value = EvaluateSimpleExpression(processed);
+                state.derived_stats[derived_stat] = value;
+
+                std::cout << "Рассчитано: " << derived_stat << " = "
+                    << value << " по формуле: " << formula_str
+                    << " (вычислено: " << processed << ")\n";
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Ошибка расчета характеристики '" << derived_stat << "': " << e.what() << "\n";
+            }
+        }
+    }
+
+    bool EvaluateCondition(const std::string& condition, const GameState& state) {
+        // Простая реализация для проверки флагов и инвентаря
+        if (condition.empty()) {
+            return true; // Пустое условие всегда истинно
+        }
+
+        // Проверка формата: "flag:имя_флага" или "item:имя_предмета"
+        size_t pos = condition.find(':');
+        if (pos == std::string::npos) {
+            std::cerr << "Invalid condition format: " << condition << "\n";
+            return false;
+        }
+
+        std::string type = condition.substr(0, pos);
+        std::string value = condition.substr(pos + 1);
+
+        if (type == "flag") {
+            // Проверка наличия флага
+            return state.flags.count(value) > 0 && state.flags.at(value);
+        }
+        else if (type == "item") {
+            // Проверка наличия предмета в инвентаре
+            return std::find(state.inventory.begin(), state.inventory.end(), value) != state.inventory.end();
+        }
+        else if (type == "stat") {
+            // Проверка характеристик в формате "stat:название>=значение"
+            size_t cmp_pos = value.find_first_of("><=");
+            if (cmp_pos == std::string::npos) {
+                std::cerr << "Invalid stat condition: " << value << "\n";
+                return false;
+            }
+
+            std::string stat_name = value.substr(0, cmp_pos);
+            char op = value[cmp_pos];
+            int required_value = std::stoi(value.substr(cmp_pos + 1));
+
+            if (state.stats.count(stat_name)) {
+                int stat_value = state.stats.at(stat_name);
+                switch (op) {
+                case '>': return stat_value > required_value;
+                case '<': return stat_value < required_value;
+                case '=': return stat_value == required_value;
+                default: break;
+                }
+            }
+
+
+            return false;
+        }
+
+        std::cerr << "Unknown condition type: " << type << "\n";
+        return false;
+    }
 
 }  // namespace rpg_utils

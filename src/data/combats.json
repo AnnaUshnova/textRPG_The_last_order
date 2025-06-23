@@ -10,12 +10,7 @@
       "dexterity": 6,
       "intelligence": 3,
       "willpower": 5,
-      "armor": 2,
-      "resistance": {
-        "physical": 1,
-        "mental": 0,
-        "energy": -1
-      }
+      "armor": 2
     },
     "phases": [
       {
@@ -138,11 +133,7 @@
       "dexterity": 9,
       "intelligence": 16,
       "willpower": 18,
-      "armor": 5,
-      "resistance": {
-        "physical": 3,
-        "mental": 5,
-        "energy": -2
+      "armor": 5
       }
     },
     "phases": [
@@ -259,4 +250,3 @@
       }
     ]
   }
-}

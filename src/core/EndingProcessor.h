@@ -3,20 +3,30 @@
 
 #include "DataManager.h"
 #include "GameState.h"
+#include <string>
 
 class EndingProcessor {
 public:
-	EndingProcessor(DataManager& data, GameState& state);
+    EndingProcessor(DataManager& data, GameState& state);
 
-	void Process(const std::string& ending_id);
+    // Обработка конкретной концовки
+    void Process(const std::string& ending_id);
+
+    // Показ экрана с коллекцией концовок
+    void ShowEndingCollection();
+
+    // Сохранение прогресса (концовки)
+    void SaveProgress();
 
 private:
-	void ShowEnding(const nlohmann::json& ending);
-	void ShowEndingCollection();
-	void SaveProgress();
+    // Отображение одной концовки
+    void DisplayEnding(const nlohmann::json& ending);
 
-	DataManager& data_;
-	GameState& state_;
+    // Проверка разблокирована ли концовка
+    bool IsEndingUnlocked(const std::string& ending_id) const;
+
+    DataManager& data_;
+    GameState& state_;
 };
 
 #endif  // RPG_ENDING_PROCESSOR_H_

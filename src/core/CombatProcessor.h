@@ -16,21 +16,40 @@ private:
         std::vector<nlohmann::json> attacks;
     };
 
-    void InitializeCombat(const nlohmann::json& combat_data);
-    void PlayerTurn();
-    void EnemyTurn();
+    struct EnvironmentEffect {
+        std::string name;
+        std::string description;
+        nlohmann::json effect;
+    };
+
+    // Основные этапы боя
+    void InitializeCombat(const std::string& combat_id);
+    void RunCombatLoop();
+    void ProcessPlayerTurn();
+    void ProcessEnemyTurn();
+    void CleanupCombat(bool player_won);
+
+    // Действия в бою
     void ExecutePlayerAction(const nlohmann::json& action);
     void ExecuteEnemyAttack(const nlohmann::json& attack);
-    void ResolveAttack(const nlohmann::json& attack, bool is_player_attacking);
-    void ProcessCombatResult(bool player_won);
-    int CalculateDamage(const std::string& dice_formula);
-    int GetCurrentEnemyPhase();
 
-    DataManager& data_manager_;
-    GameState& game_state_;
-    nlohmann::json current_combat_;
+    // Боевые расчеты
+
+    int GetCurrentEnemyPhase() const;
+
+    // Вспомогательные методы
+    void DisplayCombatStatus() const;
+    void DisplayPlayerOptions() const;
+    void ApplyEnvironmentEffect(const EnvironmentEffect& effect);
+    void ProcessDamage(int damage, bool target_is_player);
+
+    DataManager& data_;
+    GameState& state_;
+
+    // Текущие боевые данные
+    nlohmann::json combat_data_;
     std::vector<CombatPhase> enemy_phases_;
-    std::string next_scene_;  // Локальная переменная для хранения следующей сцены
+    std::vector<EnvironmentEffect> environment_effects_;
 };
 
 #endif // RPG_COMBAT_PROCESSOR_H_
