@@ -110,7 +110,10 @@
       "set_flags": { "mutant_defeated": true },
       "next_scene": "scene7"
     },
-    "on_lose": "ending1",
+    "on_lose": {
+      "ending": "ending1",
+      "next_scene": "main_menu"
+    },
     "environment": [
       {
         "name": "Обломки",
@@ -134,7 +137,6 @@
       "intelligence": 16,
       "willpower": 18,
       "armor": 5
-      }
     },
     "phases": [
       {
@@ -237,8 +239,14 @@
         }
       ]
     },
-    "on_win": "ending10",
-    "on_lose": "ending7",
+    "on_lose": {
+      "ending": "ending7",
+      "next_scene": "main_menu"
+    },
+    "on_win": {
+      "ending": "ending10",
+      "next_scene": "main_menu"
+    },
     "environment": [
       {
         "name": "Энергогенератор",
@@ -250,3 +258,4 @@
       }
     ]
   }
+}

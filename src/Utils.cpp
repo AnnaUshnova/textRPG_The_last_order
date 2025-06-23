@@ -87,25 +87,47 @@ namespace rpg_utils {
     }
 
     // Упрощенный расчет урона в стиле GURPS
-    int CalculateDamage(const std::string& damage_type) {
+    int rpg_utils::CalculateDamage(const std::string& damage_str) {
+        // Парсинг строки формата "NdX+M" или "NdX"
+        int dice_count = 0;
+        int dice_sides = 0;
+        int bonus = 0;
+        char delimiter;
+
+        std::stringstream ss(damage_str);
+        if (ss >> dice_count >> delimiter >> dice_sides) {
+            // Пытаемся прочитать бонус, если есть
+            std::string bonus_str;
+            if (ss >> bonus_str) {
+                try {
+                    bonus = std::stoi(bonus_str);
+                }
+                catch (...) {
+                    bonus = 0;
+                }
+            }
+        }
+        else {
+            // Если формат не NdX, пробуем прочитать как число
+            try {
+                return std::stoi(damage_str);
+            }
+            catch (...) {
+                return 0;
+            }
+        }
+
+        // Бросок костей
         static std::random_device rd;
         static std::mt19937 gen(rd());
-        std::uniform_int_distribution<int> d6(1, 6);
+        std::uniform_int_distribution<int> die(1, dice_sides);
 
-        if (damage_type == "light") {
-            return d6(gen);  // Легкое оружие: 1d6
-        }
-        else if (damage_type == "medium") {
-            return d6(gen) + d6(gen);  // Среднее оружие: 2d6
-        }
-        else if (damage_type == "heavy") {
-            return d6(gen) + d6(gen) + d6(gen);  // Тяжелое оружие: 3d6
-        }
-        else if (damage_type == "piercing") {
-            return d6(gen) + std::max(0, d6(gen) - 2);  // Колющее: 1d6-2
+        int total = 0;
+        for (int i = 0; i < dice_count; i++) {
+            total += die(gen);
         }
 
-        return 0;  // Неизвестный тип урона
+        return total + bonus;
     }
 
     // Input implementation

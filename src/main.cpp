@@ -9,17 +9,24 @@ int main() {
     SetConsoleCP(CP_UTF8);
 
     try {
+        // Инициализация менеджера данных
         DataManager data;
         data.LoadAll("data/");
 
+        // Инициализация состояния игры
         GameState state;
-        state.current_scene = "main_menu";
+
+        // Загрузка сохраненной игры, если есть
+        data.LoadGameState("save.json", state);
+        std::cout << "Текущая сцена после загрузки: " << state.current_scene << "\n";
+        std::cout << "Здоровье после загрузки: " << state.current_health << "\n";
 
         GameProcessor processor(data, state);
 
         while (!state.quit_game) {
             const std::string& current = state.current_scene;
 
+            // Обработка специальных сцен
             if (current == "quit_game") {
                 state.quit_game = true;
             }
@@ -36,11 +43,17 @@ int main() {
             }
             else if (current.find("ending") == 0) {
                 processor.ShowEnding(current);
+                state.current_scene = "main_menu"; // Возврат в главное меню после концовки
             }
             else {
                 processor.ProcessScene(current);
             }
         }
+
+        // Сохранение игры перед выходом
+        state.quit_game = false; // Сбрасываем флаг выхода для следующего запуска
+        data.SaveGameState("save.json", state);
+        std::cout << "Прогресс сохранен. До свидания!\n";
     }
     catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;

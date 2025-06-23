@@ -1,5 +1,6 @@
 {
   "current_scene": "main_menu",
+  "current_health": 0,
   "quit_game": false,
   "flags": {
     "character_created": true,

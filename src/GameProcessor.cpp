@@ -9,9 +9,23 @@ GameProcessor::GameProcessor(DataManager& data, GameState& state)
 }
 
 void GameProcessor::ProcessCombat(const std::string& combat_id) {
-    const auto& combats = data_.Get("combat");
+    const auto& combats = data_.Get("combats");
+
+    if (!combats.is_object()) {
+        std::cerr << "Ошибка: данные о боях имеют неверный формат\n";
+        return;
+    }
+
+    // Ищем конкретный бой по ID
     if (!combats.contains(combat_id)) {
         std::cerr << "Бой не найден: " << combat_id << std::endl;
+
+        std::cerr << "Доступные бои: ";
+        for (auto& [key, value] : combats.items()) {
+            std::cerr << key << ", ";
+        }
+        std::cerr << std::endl;
+
         return;
     }
 
@@ -19,6 +33,13 @@ void GameProcessor::ProcessCombat(const std::string& combat_id) {
     InitializeCombat(combat_data, combat_id);
 
     while (state_.combat.enemy_health > 0 && state_.current_health > 0) {
+
+        // Отладочная информация
+        std::cout << "--- Отладка ---\n";
+        std::cout << "Фаза боя: " << state_.combat.current_phase << "\n";
+        std::cout << "Здоровье врага: " << state_.combat.enemy_health << "\n";
+        std::cout << "Здоровье игрока: " << state_.current_health << "\n\n";
+
         DisplayCombatStatus(combat_data);
 
         if (state_.combat.player_turn) {
@@ -41,19 +62,44 @@ void GameProcessor::ShowEnding(const std::string& ending_id) {
 
     const auto& ending = endings[ending_id];
     DisplayEnding(ending);
+
+    // Добавляем концовку в коллекцию
     state_.unlocked_endings.insert(ending_id);
-    state_.quit_game = true;
+
+    // Не завершаем игру сразу, позволяя продолжить
+    std::cout << "\nНажмите Enter для продолжения...";
+    rpg_utils::Input::GetLine();
 }
 
 void GameProcessor::ShowEndingCollection() {
     const auto& endings = data_.Get("endings");
     std::cout << "\n===== ДОСТИГНУТЫЕ КОНЦОВКИ =====\n";
 
-    for (const auto& id : state_.unlocked_endings) {
-        if (endings.contains(id)) {
-            const auto& ending = endings[id];
-            std::cout << ending["title"].get<std::string>() << "\n";
-            std::cout << "------------------------------\n";
+    if (state_.unlocked_endings.empty()) {
+        std::cout << "Вы еще не получили ни одной концовки.\n";
+    }
+    else {
+        int index = 1;
+        std::vector<std::string> sorted_endings(
+            state_.unlocked_endings.begin(),
+            state_.unlocked_endings.end()
+        );
+        std::sort(sorted_endings.begin(), sorted_endings.end());
+
+        for (const auto& id : sorted_endings) {
+            if (endings.contains(id)) {
+                const auto& ending = endings[id];
+                std::cout << index++ << ". " << ending["title"].get<std::string>() << "\n";
+            }
+        }
+
+        // Выбор концовки для просмотра
+        std::cout << "\nВыберите концовку для просмотра (1-" << sorted_endings.size()
+            << ", 0 - выход): ";
+        int choice = rpg_utils::Input::GetInt(0, sorted_endings.size());
+
+        if (choice > 0) {
+            ShowEnding(sorted_endings[choice - 1]);
         }
     }
 
@@ -75,7 +121,16 @@ void GameProcessor::InitializeCharacter() {
     std::cout << "\n===== ОПИСАНИЕ ХАРАКТЕРИСТИК =====\n";
     for (const auto& stat : core_stats) {
         std::cout << display_names.at(stat) << ":\n";
-        std::cout << descriptions.at(stat) << "\n\n";
+
+        // Обработка переносов строк в описаниях
+        std::string desc = descriptions.at(stat);
+        size_t pos = 0;
+        while ((pos = desc.find("\\n", pos)) != std::string::npos) {
+            desc.replace(pos, 2, "\n");
+            pos += 1;
+        }
+
+        std::cout << desc << "\n\n";
     }
 
     // Определяем максимальную ширину колонок
@@ -90,22 +145,38 @@ void GameProcessor::InitializeCharacter() {
         std::cout << "Осталось очков: " << state_.stat_points << "\n\n";
 
         // Шапка таблицы
-        std::cout << std::left << std::setw(4) << "ID"
+        std::cout << std::left
+            << std::setw(4) << "ID"
             << std::setw(max_name_width) << "Характеристика"
             << std::setw(8) << "Текущее"
             << "Описание\n";
 
-        std::cout << std::setfill('-') << std::setw(4 + max_name_width + 8 + 50) << ""
+        std::cout << std::setfill('-')
+            << std::setw(4) << ""
+            << std::setw(max_name_width) << ""
+            << std::setw(8) << ""
+            << std::setw(50) << ""
             << std::setfill(' ') << "\n";
 
         // Данные характеристик
         int index = 1;
         for (const auto& stat : core_stats) {
-            std::cout << std::left << std::setw(4) << index
+            std::cout << std::left
+                << std::setw(4) << index
                 << std::setw(max_name_width) << display_names.at(stat)
-                << std::setw(8) << state_.stats[stat]
-                << descriptions.at(stat) << "\n";
-                index++;
+                << std::setw(8) << state_.stats[stat];
+
+            // Выводим только первую строку описания
+            std::string desc = descriptions.at(stat);
+            size_t pos = desc.find("\\n");
+            if (pos != std::string::npos) {
+                std::cout << desc.substr(0, pos);
+            }
+            else {
+                std::cout << desc;
+            }
+            std::cout << "\n";
+            index++;
         }
 
         // Выбор характеристик
@@ -121,6 +192,7 @@ void GameProcessor::InitializeCharacter() {
     }
 
     CalculateDerivedStats();
+    state_.current_health = state_.derived_stats.at("health");
     std::cout << "\nПерсонаж успешно создан!\n\n";
 }
 
@@ -142,6 +214,19 @@ void GameProcessor::HandleAutoAction(const std::string& action) {
 }
 
 void GameProcessor::ApplyGameEffects(const nlohmann::json& effects) {
+    // Сброс состояния
+    if (effects.contains("reset_state")) {
+        const auto& char_base = data_.Get("character_base");
+        data_.ResetGameState(state_, char_base);
+        std::cout << "Состояние игры сброшено.\n";
+    }
+
+    // Загрузка игры
+    if (effects.contains("load_game")) {
+        data_.LoadGameState("save.json", state_);
+        std::cout << "Игра загружена.\n";
+    }
+
     // Устанавливаем флаги
     if (effects.contains("set_flags")) {
         for (const auto& [flag, value] : effects["set_flags"].items()) {
@@ -177,14 +262,26 @@ void GameProcessor::CalculateDerivedStats() {
             state_.derived_stats[stat] = state_.stats.at("intelligence") * 2;
         }
     }
-    state_.current_health = state_.derived_stats.at("health");
+
+    // Добавьте вывод для отладки
+    std::cout << "Рассчитанные производные характеристики:\n";
+    for (const auto& [stat, value] : state_.derived_stats) {
+        std::cout << stat << ": " << value << "\n";
+    }
 }
 
 void GameProcessor::InitializeCombat(const nlohmann::json& combat_data, const std::string& combat_id) {
+    // Сбросить предыдущее состояние боя
+    state_.combat = CombatState();
+
     state_.combat.enemy_id = combat_id;
     state_.combat.enemy_health = combat_data["health"].get<int>();
     state_.combat.current_phase = 0;
     state_.combat.player_turn = true;
+
+    // Дополнительная отладочная информация
+    std::cout << "Инициализирован бой: " << combat_id << "\n";
+    std::cout << "Здоровье врага: " << state_.combat.enemy_health << "\n";
 }
 
 void GameProcessor::DisplayCombatStatus(const nlohmann::json& combat_data) {
@@ -194,19 +291,6 @@ void GameProcessor::DisplayCombatStatus(const nlohmann::json& combat_data) {
         << combat_data["health"].get<int>() << "\n";
     std::cout << "Ваше здоровье: " << state_.current_health << "/"
         << state_.derived_stats.at("health") << "\n\n";
-}
-
-void GameProcessor::CleanupCombat(const nlohmann::json& combat_data) {
-    if (state_.combat.enemy_health <= 0) {
-        std::cout << "\nПобеда!\n";
-        if (combat_data.contains("on_win")) {
-            ApplyGameEffects(combat_data["on_win"]);
-        }
-    }
-    else {
-        std::cout << "\nПоражение!\n";
-        state_.current_scene = combat_data["on_lose"].get<std::string>();
-    }
 }
 
 void GameProcessor::DisplayEnding(const nlohmann::json& ending) {
@@ -378,8 +462,11 @@ void GameProcessor::ProcessCheckResult(const nlohmann::json& result) {
 }
 
 void GameProcessor::ProcessScene(const std::string& scene_id) {
+    std::cout << "\n=== ОБРАБОТКА СЦЕНЫ: " << scene_id << " ===\n";
+
     // Проверяем, посещали ли мы эту сцену ранее
     bool is_first_visit = (visited_scenes_.find(scene_id) == visited_scenes_.end());
+    std::cout << "Первое посещение: " << (is_first_visit ? "да" : "нет") << "\n";
 
     // Пробуем найти в обычных сценах
     const auto& scenes = data_.Get("scenes");
@@ -443,13 +530,44 @@ void GameProcessor::ProcessScene(const std::string& scene_id) {
 }
 
 void GameProcessor::ProcessCheck(const nlohmann::json& check_data) {
+    auto GetNextScene = [&](const std::string& result_type) -> std::string {
+        // Проверяем все возможные варианты результатов
+        std::vector<std::string> fallback_types;
+
+        if (result_type == "critical_success") {
+            fallback_types = { "critical_success", "success", "fail", "critical_fail" };
+        }
+        else if (result_type == "critical_fail") {
+            fallback_types = { "critical_fail", "fail", "success", "critical_success" };
+        }
+        else if (result_type == "success") {
+            fallback_types = { "success", "critical_success", "fail", "critical_fail" };
+        }
+        else { // fail
+            fallback_types = { "fail", "critical_fail", "success", "critical_success" };
+        }
+
+        // Ищем подходящую сцену в результатах
+        for (const auto& type : fallback_types) {
+            if (check_data.contains("results") &&
+                check_data["results"].contains(type)) {
+                return check_data["results"][type].get<std::string>();
+            }
+            else if (check_data.contains(type)) {
+                return check_data[type].get<std::string>();
+            }
+        }
+
+        return ""; // Ничего не найдено
+        };
+
     // Проверяем, есть ли поле "type" (новый формат)
     if (check_data.contains("type")) {
         std::string stat = check_data["type"].get<std::string>();
         int difficulty = check_data.value("difficulty", 0);
         int base_value = state_.stats.at(stat);
 
-        // Бросаем кубики в стиле GURPS
+        // Бросаем кубики
         auto roll = rpg_utils::RollDiceWithModifiers(base_value, difficulty);
         std::cout << "\nБросок характеристики " << stat << ": "
             << roll.total_roll << " против " << base_value << "\n";
@@ -476,31 +594,27 @@ void GameProcessor::ProcessCheck(const nlohmann::json& check_data) {
         }
 
         // Определяем следующую сцену
-        if (check_data.contains("results") && check_data["results"].is_object()) {
-            // Новый формат с объектом results
-            if (check_data["results"].contains(result_type)) {
-                state_.current_scene = check_data["results"][result_type].get<std::string>();
-            }
-            else {
-                std::cerr << "Ошибка: не определена следующая сцена для результата "
-                    << result_type << std::endl;
-                state_.current_scene = "main_menu";
-            }
+        std::string next_scene = GetNextScene(result_type);
+        if (!next_scene.empty()) {
+            state_.current_scene = next_scene;
         }
         else {
-            // Старый формат - результаты в корне объекта
-            if (check_data.contains(result_type)) {
-                state_.current_scene = check_data[result_type].get<std::string>();
+            // Используем универсальный резервный вариант
+            std::cerr << "Предупреждение: не определена сцена для '" << result_type
+                << "', используется 'fail'\n";
+
+            if (check_data.contains("results") &&
+                check_data["results"].contains("fail")) {
+                state_.current_scene = check_data["results"]["fail"].get<std::string>();
             }
-            else if (result_type == "success" && check_data.contains("success")) {
-                state_.current_scene = check_data["success"].get<std::string>();
-            }
-            else if (result_type == "fail" && check_data.contains("fail")) {
+            else if (check_data.contains("fail")) {
                 state_.current_scene = check_data["fail"].get<std::string>();
             }
+            else if (check_data.contains("success")) {
+                state_.current_scene = check_data["success"].get<std::string>();
+            }
             else {
-                std::cerr << "Ошибка: не определена следующая сцена для результата "
-                    << result_type << std::endl;
+                std::cerr << "Ошибка: не определена сцена для 'fail', переход в главное меню\n";
                 state_.current_scene = "main_menu";
             }
         }
@@ -544,10 +658,16 @@ void GameProcessor::ProcessCheck(const nlohmann::json& check_data) {
         if (check_data.contains(result_type)) {
             state_.current_scene = check_data[result_type].get<std::string>();
         }
-        else if (result_type == "success" && check_data.contains("success")) {
+        else if (result_type == "critical_success" && check_data.contains("success")) {
             state_.current_scene = check_data["success"].get<std::string>();
         }
-        else if (result_type == "fail" && check_data.contains("fail")) {
+        else if (result_type == "critical_fail" && check_data.contains("fail")) {
+            state_.current_scene = check_data["fail"].get<std::string>();
+        }
+        else if (check_data.contains("success")) {
+            state_.current_scene = check_data["success"].get<std::string>();
+        }
+        else if (check_data.contains("fail")) {
             state_.current_scene = check_data["fail"].get<std::string>();
         }
         else {
@@ -600,21 +720,21 @@ void GameProcessor::ProcessPlayerTurn(const nlohmann::json& combat_data) {
 }
 
 void GameProcessor::ProcessEnemyTurn(const nlohmann::json& combat_data) {
+    // Используем текущую фазу из состояния
+    int current_phase = state_.combat.current_phase;
     const auto& phases = combat_data["phases"];
-    int current_phase = 0;
 
-    // Находим текущую фазу боя на основе здоровья
-    for (size_t i = 0; i < phases.size(); i++) {
-        if (state_.combat.enemy_health <= phases[i]["health_threshold"]) {
-            current_phase = static_cast<int>(i);
-            break;
-        }
+    // Проверяем, что текущая фаза существует
+    if (current_phase >= phases.size()) {
+        std::cerr << "Ошибка: недопустимая фаза боя: " << current_phase << std::endl;
+        state_.combat.enemy_health = 0; // Завершаем бой
+        return;
     }
 
     const auto& attacks = phases[current_phase]["attacks"];
     if (attacks.empty()) return;
 
-    // Выбираем случайную атаку для этой фазы
+    // Выбираем случайную атаку
     static std::random_device rd;
     static std::mt19937 gen(rd());
     std::uniform_int_distribution<size_t> dist(0, attacks.size() - 1);
@@ -624,11 +744,62 @@ void GameProcessor::ProcessEnemyTurn(const nlohmann::json& combat_data) {
     std::cout << attack["description"].get<std::string>() << "\n";
 
     if (attack.contains("damage")) {
-        // Упрощенный расчет урона в стиле GURPS
         int damage = rpg_utils::CalculateDamage(attack["damage"].get<std::string>());
-        state_.current_health -= damage;
+        state_.current_health = std::max(0, state_.current_health - damage);
         std::cout << "Получено урона: " << damage << "\n";
     }
 
+    // Проверяем, нужно ли перейти на следующую фазу
+    int next_phase = current_phase;
+    for (size_t i = current_phase; i < phases.size(); i++) {
+        if (state_.combat.enemy_health <= phases[i]["health_threshold"]) {
+            next_phase = i;
+        }
+    }
+
+    state_.combat.current_phase = next_phase;
     state_.combat.player_turn = true;
+}
+
+void GameProcessor::CleanupCombat(const nlohmann::json& combat_data) {
+    if (state_.combat.enemy_health <= 0) {
+        std::cout << "\nПобеда!\n";
+        if (combat_data.contains("on_win")) {
+            ApplyGameEffects(combat_data["on_win"]);
+        }
+    }
+    else {
+        std::cout << "\nПоражение!\n";
+
+        // Добавляем концовку в коллекцию
+        if (combat_data.contains("on_lose")) {
+            std::string ending_id;
+
+            // Обрабатываем разные форматы on_lose
+            if (combat_data["on_lose"].is_string()) {
+                ending_id = combat_data["on_lose"].get<std::string>();
+            }
+            else if (combat_data["on_lose"].is_object() &&
+                combat_data["on_lose"].contains("ending")) {
+                ending_id = combat_data["on_lose"]["ending"].get<std::string>();
+            }
+
+            if (!ending_id.empty()) {
+                // Добавляем концовку в коллекцию
+                state_.unlocked_endings.insert(ending_id);
+                std::cout << "Добавлена концовка: " << ending_id << "\n";
+
+                // Показываем концовку
+                ShowEnding(ending_id);
+            }
+
+            // Устанавливаем следующую сцену
+            if (combat_data["on_lose"].contains("next_scene")) {
+                state_.current_scene = combat_data["on_lose"]["next_scene"].get<std::string>();
+            }
+        }
+    }
+
+    // Сбрасываем состояние боя
+    state_.combat = CombatState();
 }
