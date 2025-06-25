@@ -19,10 +19,10 @@
           {
             "name": "Когти Хаоса",
             "type": "melee",
-            "stat": "strength",
-            "difficulty": -1,
-            "damage": "1d8+4",
-            "effects": [ "bleed" ],
+            "check_stat": "melee",
+            "reaction_stat": "dexterity",
+            "damage": "1d8",
+            "damage_stat": "strength",
             "description": "Мутант бросается на вас, его когти светятся энергией Хаоса!"
           }
         ]
@@ -33,20 +33,11 @@
           {
             "name": "Берсерк",
             "type": "melee",
-            "stat": "strength",
-            "difficulty": -3,
-            "damage": "2d6+6",
-            "effects": [ "bleed", "stun" ],
+            "check_stat": "melee",
+            "reaction_stat": "dexterity",
+            "damage": "2d6",
+            "damage_stat": "strength",
             "description": "Раненый мутант впадает в берсерк, атакуя с яростью!"
-          },
-          {
-            "name": "Выброс энергии",
-            "type": "energy",
-            "stat": "willpower",
-            "difficulty": 2,
-            "damage": "1d10",
-            "effects": [ "burn" ],
-            "description": "Из тела мутанта вырываются потоки хаотической энергии!"
           }
         ]
       }
@@ -56,10 +47,10 @@
         {
           "type": "shoot",
           "name": "Стрельба из лазгана",
-          "stat": "ranged",
-          "difficulty": 0,
-          "damage": "1d10",
-          "effects": [ "pierce" ],
+          "check_stat": "ranged",
+          "reaction_stat": "dexterity",
+          "damage": "1d10+2",
+          "damage_stat": "intelligence",
           "results": {
             "critical_success": "Выстрел попадает прямо в глаз мутанта!",
             "success": "Лазерный луч прожигает плоть мутанта",
@@ -70,10 +61,10 @@
         {
           "type": "melee",
           "name": "Атака ножом",
-          "stat": "melee",
-          "difficulty": -2,
+          "check_stat": "melee",
+          "reaction_stat": "dexterity",
           "damage": "1d6+2",
-          "effects": [ "bleed" ],
+          "damage_stat": "strength",
           "results": {
             "critical_success": "Нож вонзается по рукоять, черная кровь хлещет фонтаном!",
             "success": "Вы наносите точный удар по мутанту",
@@ -82,32 +73,23 @@
           }
         },
         {
-          "type": "grenade",
-          "name": "Метание гранаты",
-          "stat": "dexterity",
-          "difficulty": -1,
-          "damage": "3d6",
-          "effects": [ "blast" ],
-          "results": {
-            "success": "Граната точно летит к ногам мутанта",
-            "fail": "Граната застревает в обломках, взрываясь впустую"
-          }
-        },
-        {
           "type": "tactic",
           "name": "Использовать окружение",
-          "stat": "intelligence",
-          "difficulty": 1,
-          "effects": [ "advantage" ],
+          "check_stat": "intelligence",
           "results": {
-            "success": "Вы используете обломки как укрытие",
+            "success": "Вы подрываете топливные баки, нанося урон мутанту!",
             "fail": "Ваша попытка использовать окружение только открывает вас для атаки"
+          },
+          "set_flags": {
+            "fuel_barrels_used": true
           }
         }
       ]
     },
     "on_win": {
-      "set_flags": { "mutant_defeated": true },
+      "set_flags": {
+        "mutant_defeated": true
+      },
       "next_scene": "scene7"
     },
     "on_lose": {
@@ -116,18 +98,15 @@
     },
     "environment": [
       {
-        "name": "Обломки",
-        "effect": "+2 к защите при использовании"
-      },
-      {
         "name": "Топливные баки",
-        "effect": "Могут быть взорваны (4d6 урона)"
+        "effect": "Взрыв при повреждении",
+        "damage": "4d6"
       }
     ]
   },
   "combat_tech_heretic": {
     "enemy": "Техноеретик Магос",
-    "health": 80,
+    "health": 90,
     "stats": {
       "melee": 8,
       "ranged": 14,
@@ -140,47 +119,44 @@
     },
     "phases": [
       {
-        "health_threshold": 80,
+        "health_threshold": 90,
         "attacks": [
           {
             "name": "Плазменная пушка",
             "type": "energy",
-            "stat": "ranged",
-            "difficulty": 0,
-            "damage": "2d10+4",
-            "effects": [ "burn" ],
-            "description": "Магос направляет на вас раскаленную плазму!"
-          },
-          {
-            "name": "Ментальный штурм",
-            "type": "mental",
-            "stat": "willpower",
-            "difficulty": 3,
-            "damage": "1d6",
-            "effects": [ "stun", "confuse" ],
-            "description": "Волна чужеродных мыслей обрушивается на ваше сознание!"
+            "check_stat": "ranged",
+            "reaction_stat": "dexterity",
+            "damage": "1d10+6",
+            "damage_stat": "intelligence",
+            "description": "Магос направляет на вас раскалённую плазму, оставляя оплавленные следы на металле!"
           }
         ]
       },
       {
-        "health_threshold": 40,
+        "health_threshold": 60,
         "attacks": [
           {
-            "name": "Хаотический разряд",
-            "type": "energy",
-            "stat": "intelligence",
-            "difficulty": -2,
-            "damage": "3d8",
-            "effects": [ "burn", "emp" ],
-            "description": "Катушки Тесла на спине Магос испускают хаотические разряды!"
-          },
+            "name": "Выпад буром",
+            "type": "melee",
+            "check_stat": "melee",
+            "reaction_stat": "dexterity",
+            "damage": "2d10",
+            "damage_stat": "strength",
+            "description": "Из рукава техноеретика с шипением выдвигается роторный бур, вращающиеся лезвия рвут воздух!"
+          }
+        ]
+      },
+      {
+        "health_threshold": 30,
+        "attacks": [
           {
-            "name": "Призыв демонетек",
-            "type": "summon",
-            "stat": "willpower",
-            "difficulty": 4,
-            "effects": [ "summon" ],
-            "description": "Магос открывает портал в Варп, призывая демонетек!"
+            "name": "Ментальный штурм",
+            "type": "mental",
+            "check_stat": "willpower",
+            "reaction_stat": "willpower",
+            "damage": "1d8",
+            "damage_stat": "intelligence",
+            "description": "Повреждённый нейрокортекс Магоса испускает волну варп-энергии, разрывающую сознание!"
           }
         ]
       }
@@ -190,9 +166,10 @@
         {
           "type": "shoot",
           "name": "Огонь из лазгана",
-          "stat": "ranged",
-          "difficulty": 2,
-          "damage": "1d10-2",
+          "check_stat": "ranged",
+          "reaction_stat": "dexterity",
+          "damage": "1d10+2",
+          "damage_stat": "intelligence",
           "results": {
             "critical_success": "Выстрел пробивает энергетическое поле!",
             "success": "Луч оставляет отметину на корпусе",
@@ -203,36 +180,37 @@
         {
           "type": "melee",
           "name": "Атака в ближнем бою",
-          "stat": "melee",
-          "difficulty": 4,
-          "damage": "1d6+1",
+          "check_stat": "melee",
+          "reaction_stat": "dexterity",
+          "damage": "1d6+2",
+          "damage_stat": "strength",
           "results": {
             "critical_success": "Вы уворачиваетесь от щупалец и наносите удар!",
-            "success": "Вам удается поразить часть механизма",
+            "success": "Вам удаётся поразить часть механизма",
             "fail": "Щупальца отбрасывают вас назад",
             "critical_fail": "Вас схватили механические клешни!"
           }
         },
         {
-          "type": "melta_charge",
-          "name": "Активировать мельтазаряд",
-          "stat": "intelligence",
-          "difficulty": -1,
-          "damage": "10d6",
+          "type": "tactic",
+          "name": "Использовать окружение",
+          "check_stat": "intelligence",
           "results": {
-            "success": "Вы устанавливаете заряд на слабое место!",
-            "fail": "Кабели-щупальца мешают установить заряд!"
+            "success": "Вы подрываете энергогенератор, нанося урон техноеретику!",
+            "fail": "Ваша попытка использовать окружение только открывает вас для атаки"
+          },
+          "set_flags": {
+            "generator_used": true
           }
         },
         {
           "type": "faith",
           "name": "Молитва Императору",
-          "stat": "willpower",
-          "difficulty": 5,
-          "effects": [ "protection", "smite" ],
+          "check_stat": "willpower",
+          "heal": "1d6",
           "results": {
-            "critical_success": "Святая аура защищает вас!",
-            "success": "Вы чувствуете благословение Императора",
+            "critical_success": "Святая аура защищает вас! Вы чувствуете прилив сил (+1d6 HP)",
+            "success": "Вы чувствуете благословение Императора (+1d6 HP)",
             "fail": "Еретическая энергия подавляет вашу веру",
             "critical_fail": "Сомнения овладевают вами!"
           }
@@ -240,21 +218,25 @@
       ]
     },
     "on_lose": {
-      "ending": "ending7",
+      "ending": {
+        "melee": "ending7",
+        "shoot": "ending8",
+        "mental": "ending9"
+      },
       "next_scene": "main_menu"
     },
     "on_win": {
-      "ending": "ending10",
-      "next_scene": "main_menu"
+      "next_scene": {
+        "melee": "scene10_1",
+        "shoot": "scene10_2",
+        "grenade": "scene10_3"
+      }
     },
     "environment": [
       {
         "name": "Энергогенератор",
-        "effect": "Взрыв при повреждении (6d6 урона)"
-      },
-      {
-        "name": "Консоль управления",
-        "effect": "Может отключить защитные поля"
+        "effect": "Взрыв при повреждении",
+        "damage": "6d6"
       }
     ]
   }
