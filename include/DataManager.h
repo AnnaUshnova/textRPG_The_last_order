@@ -16,7 +16,13 @@ public:
     void LoadGameState(const std::string& filename, GameState& state);
 
     // Функция для сброса состояния к начальному
-    void ResetGameState(GameState& state, const nlohmann::json& char_base);
+    void ResetGameState(GameState& state);
+
+    nlohmann::json GetItem(const std::string& item_id) const {
+        const auto& items = Get("items");
+        return items.contains(item_id) ? items[item_id] : nlohmann::json();
+    }
+
 
 private:
     std::unordered_map<std::string, nlohmann::json> data_sets_;

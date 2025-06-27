@@ -2,7 +2,7 @@
   "current_scene": "main_menu",
   "health": 100,
   "max_health": 100,
-  "inventory": [ "lasgun", "knife", "detonator", "melta_charge" ],
+  "inventory": [],
   "flags": {
     "ready_for_character_creation": false,
     "bodies_inspected": false,
@@ -16,12 +16,13 @@
     "fuel_barrels_used": false,
     "generator_used": false
   },
-  "known_endings": [],
+  "unlocked_endings": [],
+  "visited_scenes": {},
   "combat": {
     "current_enemy": null,
     "player_turn": true,
     "player_health": 100,
     "enemy_health": 0
-  },
-  "achievements": []
+  }
+
 } 

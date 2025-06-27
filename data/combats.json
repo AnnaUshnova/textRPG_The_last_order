@@ -8,13 +8,13 @@
       "strength": 14,
       "endurance": 10,
       "dexterity": 6,
-      "intelligence": 3,
-      "willpower": 5,
+      "intelligence": 8,
+      "willpower": 8,
       "armor": 2
     },
     "phases": [
       {
-        "health_threshold": 35,
+        "health_threshold": 20,
         "attacks": [
           {
             "name": "Когти Хаоса",
@@ -22,21 +22,19 @@
             "check_stat": "melee",
             "reaction_stat": "dexterity",
             "damage": "1d8",
-            "damage_stat": "strength",
             "description": "Мутант бросается на вас, его когти светятся энергией Хаоса!"
           }
         ]
       },
       {
-        "health_threshold": 15,
+        "health_threshold": 10,
         "attacks": [
           {
             "name": "Берсерк",
             "type": "melee",
             "check_stat": "melee",
             "reaction_stat": "dexterity",
-            "damage": "2d6",
-            "damage_stat": "strength",
+            "damage": "2d6-2",
             "description": "Раненый мутант впадает в берсерк, атакуя с яростью!"
           }
         ]
@@ -48,9 +46,8 @@
           "type": "shoot",
           "name": "Стрельба из лазгана",
           "check_stat": "ranged",
-          "reaction_stat": "dexterity",
-          "damage": "1d10+2",
-          "damage_stat": "intelligence",
+          "difficulty": -2,
+          "damage": "1d10",
           "results": {
             "critical_success": "Выстрел попадает прямо в глаз мутанта!",
             "success": "Лазерный луч прожигает плоть мутанта",
@@ -62,9 +59,7 @@
           "type": "melee",
           "name": "Атака ножом",
           "check_stat": "melee",
-          "reaction_stat": "dexterity",
           "damage": "1d6+2",
-          "damage_stat": "strength",
           "results": {
             "critical_success": "Нож вонзается по рукоять, черная кровь хлещет фонтаном!",
             "success": "Вы наносите точный удар по мутанту",
@@ -76,12 +71,16 @@
           "type": "tactic",
           "name": "Использовать окружение",
           "check_stat": "intelligence",
+          "difficulty": 2,
           "results": {
             "success": "Вы подрываете топливные баки, нанося урон мутанту!",
             "fail": "Ваша попытка использовать окружение только открывает вас для атаки"
           },
-          "set_flags": {
-            "fuel_barrels_used": true
+          "effects": {
+            "damage": "3d6",
+            "set_flags": {
+              "fuel_barrels_used": true
+            }
           }
         }
       ]
@@ -100,7 +99,7 @@
       {
         "name": "Топливные баки",
         "effect": "Взрыв при повреждении",
-        "damage": "4d6"
+        "damage": "3d6"
       }
     ]
   },

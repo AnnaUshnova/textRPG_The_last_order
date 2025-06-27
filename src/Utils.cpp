@@ -40,52 +40,37 @@ namespace rpg_utils {
     RollDetails RollDiceWithModifiers(int skill_value, int difficulty_modifier) {
         static std::random_device rd;
         static std::mt19937 gen(rd());
-
-        // Бросок 3d6 как в GURPS
         std::uniform_int_distribution<int> d6(1, 6);
+
         int roll1 = d6(gen);
         int roll2 = d6(gen);
         int roll3 = d6(gen);
         int total_roll = roll1 + roll2 + roll3;
 
-        // Эффективное значение навыка с учетом модификаторов
-        int effective_skill = std::max(1, skill_value + difficulty_modifier);
+        // Правильный расчет эффективного навыка
+        int effective_skill = skill_value + difficulty_modifier;
 
-        // Определение результата
         RollResultType result;
 
+        // Критические успехи
         if (total_roll <= 4) {
-            // Критический успех (3-4)
             result = RollResultType::kCriticalSuccess;
         }
-        else if (total_roll == 17 || total_roll == 18) {
-            // Критическая неудача (17-18)
+        // Критические провалы
+        else if (total_roll >= 17) {
             result = RollResultType::kCriticalFail;
         }
+        // Успех при броске <= эффективного навыка
         else if (total_roll <= effective_skill) {
-            // Обычный успех
             result = RollResultType::kSuccess;
         }
+        // Провал
         else {
-            // Обычная неудача
             result = RollResultType::kFail;
-        }
-
-        // Специальные случаи для высоких навыков
-        if (effective_skill >= 16) {
-            if (total_roll == 5 || total_roll == 6) {
-                result = RollResultType::kCriticalSuccess;
-            }
-        }
-        else if (effective_skill <= 15) {
-            if (total_roll == 16) {
-                result = RollResultType::kCriticalFail;
-            }
         }
 
         return { total_roll, result };
     }
-
     // Упрощенный расчет урона в стиле GURPS
     int rpg_utils::CalculateDamage(const std::string& damage_str) {
         // Парсинг строки формата "NdX+M" или "NdX"

@@ -65,99 +65,81 @@ nlohmann::json& DataManager::GetMutable(const std::string& type) {
     return data_sets_[type];
 }
 
-// Новая функция: Сохранение состояния игры
 void DataManager::SaveGameState(const std::string& filename, const GameState& state) {
     nlohmann::json j;
 
-    // Основные параметры
-    j["current_scene"] = state.current_scene;
-    j["current_health"] = state.current_health;
-    j["stat_points"] = state.stat_points;
-    j["quit_game"] = state.quit_game;
+    // Сохраняем только концовки
+    j["unlocked_endings"] = nlohmann::json::array();
+    for (const auto& ending : state.unlocked_endings) {
+        j["unlocked_endings"].push_back(ending);
+    }
 
-    // Словари
-    j["stats"] = state.stats;
-    j["derived_stats"] = state.derived_stats;
-    j["flags"] = state.flags;
-
-    // Списки
-    j["inventory"] = state.inventory;
-    j["unlocked_endings"] = state.unlocked_endings;
-
-    // Состояние боя
-    j["combat"]["enemy_id"] = state.combat.enemy_id;
-    j["combat"]["enemy_health"] = state.combat.enemy_health;
-    j["combat"]["current_phase"] = state.combat.current_phase;
-    j["combat"]["player_turn"] = state.combat.player_turn;
-
-    // Запись в файл
     std::ofstream file(filename);
     if (file.is_open()) {
-        file << j.dump(4);  // Форматирование с отступами
-        std::cout << "Игра сохранена в: " << filename << "\n";
-    }
-    else {
-        std::cerr << "Ошибка: не удалось открыть файл для записи: " << filename << "\n";
+        file << j.dump(4);
     }
 }
 
-// Новая функция: Загрузка состояния игры
 void DataManager::LoadGameState(const std::string& filename, GameState& state) {
     std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Ошибка: файл сохранения не найден: " << filename << "\n";
-        return;
-    }
+    if (!file.is_open()) return;
 
     try {
         nlohmann::json j;
         file >> j;
 
-        // Основные параметры
-        state.current_scene = j.value("current_scene", "main_menu");
-        state.current_health = j.value("current_health", 0);
-        state.stat_points = j.value("stat_points", 0);
-        state.quit_game = j.value("quit_game", false);
-
-        // Словари
-        if (j.contains("stats")) state.stats = j["stats"].get<std::unordered_map<std::string, int>>();
-        if (j.contains("derived_stats")) state.derived_stats = j["derived_stats"].get<std::unordered_map<std::string, int>>();
-        if (j.contains("flags")) state.flags = j["flags"].get<std::unordered_map<std::string, bool>>();
-
-        // Списки
-        if (j.contains("inventory")) state.inventory = j["inventory"].get<std::vector<std::string>>();
+        // Загружаем только концовки
         if (j.contains("unlocked_endings")) {
-            for (const auto& ending : j["unlocked_endings"]) {
-                state.unlocked_endings.insert(ending.get<std::string>());
+            state.unlocked_endings.clear();
+            for (const auto& item : j["unlocked_endings"]) {
+                state.unlocked_endings.insert(item.get<std::string>());
             }
         }
-
-        // Состояние боя
-        if (j.contains("combat")) {
-            state.combat.enemy_id = j["combat"].value("enemy_id", "");
-            state.combat.enemy_health = j["combat"].value("enemy_health", 0);
-            state.combat.current_phase = j["combat"].value("current_phase", 0);
-            state.combat.player_turn = j["combat"].value("player_turn", true);
-        }
-
-        std::cout << "Игра загружена из: " << filename << "\n";
     }
     catch (const std::exception& e) {
-        std::cerr << "Ошибка загрузки сохранения: " << e.what() << "\n";
+        std::cerr << "Ошибка загрузки сохранений: " << e.what() << "\n";
     }
 }
 
-// Новая функция: Сброс состояния к начальному
-void DataManager::ResetGameState(GameState& state, const nlohmann::json& char_base) {
-    state = GameState();  // Сбрасываем состояние
+void DataManager::ResetGameState(GameState& state) {
+    // Сохраняем только концовки
+    std::unordered_set<std::string> saved_endings = state.unlocked_endings;
 
-    // Инициализируем базовые характеристики
-    if (char_base.contains("base_stats")) {
-        state.stats = char_base["base_stats"].get<std::unordered_map<std::string, int>>();
+    // Полностью сбрасываем состояние
+    state = GameState();
+
+    // Восстанавливаем концовки
+    state.unlocked_endings = saved_endings;
+
+    // Загружаем базовые характеристики
+    const auto& char_base = Get("character_base");
+    state.stats = char_base["base_stats"].get<std::unordered_map<std::string, int>>();
+    state.stat_points = char_base["points_to_distribute"].get<int>();
+
+    // Рассчитываем здоровье
+    if (char_base.contains("derived_stats_formulas")) {
+        const auto& formulas = char_base["derived_stats_formulas"];
+        if (formulas.contains("health") && formulas["health"] == "endurance * 2") {
+            state.derived_stats["health"] = state.stats["endurance"] * 2;
+            state.current_health = state.derived_stats["health"];
+            state.max_health = state.derived_stats["health"];
+        }
     }
 
-    state.stat_points = char_base.value("points_to_distribute", 10);
-    state.current_scene = char_base.value("start_scene", "main_menu");
+    // Устанавливаем начальную сцену
+    state.current_scene = "scene1";
 
-    std::cout << "Состояние игры сброшено к начальному\n";
+    // Очищаем флаги и инвентарь
+    state.flags.clear();
+    state.inventory.clear();
+    state.visited_scenes.clear();
+
+    // Загрузка начального инвентаря - ДОБАВЛЕНО ПОДТВЕРЖДЕНИЕ ЗАГРУЗКИ
+    if (char_base.contains("starting_inventory")) {
+        state.inventory = char_base["starting_inventory"].get<std::vector<std::string>>();
+        std::cout << "DEBUG: Loaded " << state.inventory.size() << " starting items\n";
+    }
+    else {
+        std::cerr << "WARNING: No starting inventory found in character_base.json\n";
+    }
 }

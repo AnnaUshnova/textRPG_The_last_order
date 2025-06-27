@@ -9,51 +9,36 @@ int main() {
     SetConsoleCP(CP_UTF8);
 
     try {
-        // Инициализация менеджера данных
         DataManager data;
         data.LoadAll("data/");
 
-        // Инициализация состояния игры
         GameState state;
-
-        // Загрузка сохраненной игры, если есть
         data.LoadGameState("save.json", state);
-        std::cout << "Текущая сцена после загрузки: " << state.current_scene << "\n";
-        std::cout << "Здоровье после загрузки: " << state.current_health << "\n";
+
+        // РЈРїСЂРѕС‰РµРЅРЅР°СЏ РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ - С‚РѕР»СЊРєРѕ РµСЃР»Рё СЃС†РµРЅР° РїСѓСЃС‚Р°СЏ
+        if (state.current_scene.empty()) {
+            state.current_scene = "main_menu";
+
+            // РџРµСЂРµРЅРµСЃРµРЅРѕ РёР· InitializeCharacter
+            const auto& char_base = data.Get("character_base");
+            if (!char_base.is_null()) {
+                state.stats = char_base["base_stats"].get<std::unordered_map<std::string, int>>();
+                state.stat_points = char_base["points_to_distribute"].get<int>();
+
+                // РСЃРїРѕР»СЊР·СѓРµРј РµРґРёРЅС‹Р№ РјРµС‚РѕРґ СЂР°СЃС‡РµС‚Р° Р·РґРѕСЂРѕРІСЊСЏ
+                state.max_health = state.stats["endurance"] * 2;
+                state.current_health = state.max_health;
+            }
+        }
 
         GameProcessor processor(data, state);
 
         while (!state.quit_game) {
-            const std::string& current = state.current_scene;
-
-            // Обработка специальных сцен
-            if (current == "quit_game") {
-                state.quit_game = true;
-            }
-            else if (current.find("combat_") == 0) {
-                processor.ProcessCombat(current);
-            }
-            else if (current == "character_creation") {
-                processor.InitializeCharacter();
-                state.current_scene = "scene7";
-            }
-            else if (current == "endings_collection") {
-                processor.ShowEndingCollection();
-                state.current_scene = "main_menu";
-            }
-            else if (current.find("ending") == 0) {
-                processor.ShowEnding(current);
-                state.current_scene = "main_menu"; // Возврат в главное меню после концовки
-            }
-            else {
-                processor.ProcessScene(current);
-            }
+            // РЈРїСЂРѕС‰РµРЅРЅС‹Р№ РѕР±СЂР°Р±РѕС‚С‡РёРє СЃС†РµРЅ
+            processor.ProcessScene(state.current_scene);
         }
 
-        // Сохранение игры перед выходом
-        state.quit_game = false; // Сбрасываем флаг выхода для следующего запуска
         data.SaveGameState("save.json", state);
-        std::cout << "Прогресс сохранен. До свидания!\n";
     }
     catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;

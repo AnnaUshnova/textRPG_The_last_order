@@ -19,38 +19,46 @@ public:
 
 private:
     struct SceneChoice {
-        std::string id;
+        int number;  // Используется как индекс выбора
         std::string text;
-        nlohmann::json effects;
-        nlohmann::json check;
-        std::string next_target;
-
+        nlohmann::json data;  // Содержит все данные выбора
+    };
+    struct CombatOption {
+        int number;
+        std::string text;
+        nlohmann::json data;
+        std::string type;
     };
 
-    // Вспомогательные методы для сцен
-    void DisplayScene(const nlohmann::json& scene);
-    void HandleAutoAction(const std::string& action);
-    void ProcessPlayerChoice(const std::vector<SceneChoice>& choices);
+
+    // Вспомогательные методы
+    void ProcessSceneChoices(const nlohmann::json& choices);
     void ProcessCheck(const nlohmann::json& check_data);
-    void ProcessCheckResult(const nlohmann::json& result);
-    std::vector<SceneChoice> GetAvailableChoices(const nlohmann::json& choices);
-    bool EvaluateCondition(const std::string& condition);
-    bool EvaluateSingleCondition(const std::string& condition);
-    void ResetVisitedScenes();
-
-    // Методы для боевой системы
-    void InitializeCombat(const nlohmann::json& combat_data, const std::string& combat_id);
-    void DisplayCombatStatus(const nlohmann::json& combat_data);
-    void ProcessPlayerTurn(const nlohmann::json& combat_data);
-    void ProcessEnemyTurn(const nlohmann::json& combat_data);
-    void CleanupCombat(const nlohmann::json& combat_data);
-    std::string ResultTypeToString(rpg_utils::RollResultType type);
-    std::unordered_map<std::string, bool> visited_scenes_;
-
-    // Общие утилиты
     void ApplyGameEffects(const nlohmann::json& effects);
+    bool EvaluateCondition(const std::string& condition);
+    void HandleAutoAction(const std::string& action);
     void CalculateDerivedStats();
     void DisplayEnding(const nlohmann::json& ending);
+    void ProcessPlayerCombatTurn(const nlohmann::json& combat);
+    void ApplyCombatResults(const nlohmann::json& results);
+    void InitializeCombat(const nlohmann::json& combat_data, const std::string& combat_id);
+    void ProcessEnemyCombatTurn(const nlohmann::json& combat);
+    void CleanupCombat(const nlohmann::json& combat_data);
+    void DisplayCombatStatus(const nlohmann::json& combat_data);
+    void InitializeNewGame();
+    void StartNewGame();
+    void FullReset();
+    void UseInventoryItemInCombat();
+    void ShowInventory();
+    void AddItemToInventory(const std::string& item_id);
+    void RemoveItemFromInventory(const std::string& item_id);
+    bool HasItem(const std::string& item_id) const;
+    void UseItemOutsideCombat();
+    void UseCombatInventory();
+    void ApplyInventoryItemEffects(const std::string& item_id, const nlohmann::json& item_data);
+
+
+
 
     DataManager& data_;
     GameState& state_;

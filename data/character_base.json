@@ -1,13 +1,13 @@
 ﻿{
   "base_stats": {
-    "strength": 8,
-    "dexterity": 8,
-    "endurance": 8,
-    "intelligence": 8,
-    "melee": 8,
-    "ranged": 8
+    "strength": 1,
+    "dexterity": 1,
+    "endurance": 1,
+    "intelligence": 1,
+    "melee": 1,
+    "ranged": 1
   },
-  "points_to_distribute": 200,
+  "points_to_distribute": 1,
   "display_names": {
     "strength": "Сила",
     "dexterity": "Ловкость",
@@ -41,5 +41,6 @@
   "derived_stats_formulas": {
     "health": "endurance * 2",
     "willpower": "intelligence * 2"
-  }
+  },
+  "starting_inventory": [ "lasgun", "knife", "detonator", "melta_charge", "frag_grenade", "medkit" ]
 }
