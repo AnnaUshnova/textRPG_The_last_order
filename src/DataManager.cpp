@@ -6,11 +6,8 @@
 namespace fs = std::filesystem;
 
 void DataManager::LoadAll(const std::string& data_dir) {
-    std::cout << "Загрузка данных из: " << data_dir << "\n";
-
     try {
         for (const auto& entry : fs::directory_iterator(data_dir)) {
-            std::cout << "Найден файл: " << entry.path() << "\n";
             if (entry.path().extension() == ".json") {
                 std::string type = entry.path().stem().string();
                 LoadJsonFile(entry.path().string(), type);
@@ -32,23 +29,12 @@ void DataManager::LoadJsonFile(const std::string& filename, const std::string& t
         nlohmann::json data;
         file >> data;
 
-        // Если есть раздел с именем типа, используем его
         if (data.contains(type)) {
             data_sets_[type] = data[type];
         }
-        // Иначе используем весь файл
         else {
             data_sets_[type] = data;
         }
-
-        // Отладочный вывод
-        std::cout << "Загружены данные типа: " << type << "\n";
-        std::cout << "Количество элементов: " << data_sets_[type].size() << "\n";
-        std::cout << "Ключи: ";
-        for (auto& [key, value] : data_sets_[type].items()) {
-            std::cout << key << ", ";
-        }
-        std::cout << "\n";
     }
     catch (const std::exception& e) {
         std::cerr << "Error loading " << type << " data: " << e.what() << std::endl;
@@ -67,8 +53,6 @@ nlohmann::json& DataManager::GetMutable(const std::string& type) {
 
 void DataManager::SaveGameState(const std::string& filename, const GameState& state) {
     nlohmann::json j;
-
-    // Сохраняем только концовки
     j["unlocked_endings"] = nlohmann::json::array();
     for (const auto& ending : state.unlocked_endings) {
         j["unlocked_endings"].push_back(ending);
@@ -88,7 +72,6 @@ void DataManager::LoadGameState(const std::string& filename, GameState& state) {
         nlohmann::json j;
         file >> j;
 
-        // Загружаем только концовки
         if (j.contains("unlocked_endings")) {
             state.unlocked_endings.clear();
             for (const auto& item : j["unlocked_endings"]) {
@@ -102,21 +85,14 @@ void DataManager::LoadGameState(const std::string& filename, GameState& state) {
 }
 
 void DataManager::ResetGameState(GameState& state) {
-    // Сохраняем только концовки
     std::unordered_set<std::string> saved_endings = state.unlocked_endings;
-
-    // Полностью сбрасываем состояние
     state = GameState();
-
-    // Восстанавливаем концовки
     state.unlocked_endings = saved_endings;
 
-    // Загружаем базовые характеристики
     const auto& char_base = Get("character_base");
     state.stats = char_base["base_stats"].get<std::unordered_map<std::string, int>>();
     state.stat_points = char_base["points_to_distribute"].get<int>();
 
-    // Рассчитываем здоровье
     if (char_base.contains("derived_stats_formulas")) {
         const auto& formulas = char_base["derived_stats_formulas"];
         if (formulas.contains("health") && formulas["health"] == "endurance * 2") {
@@ -126,21 +102,15 @@ void DataManager::ResetGameState(GameState& state) {
         }
     }
 
-    // Устанавливаем начальную сцену
     state.current_scene = "scene1";
-
-    // Очищаем флаги и инвентарь
     state.flags.clear();
     state.inventory.clear();
     state.visited_scenes.clear();
 
-    // Загрузка начального инвентаря
-    state.inventory.clear();
     if (char_base.contains("starting_inventory")) {
         for (const auto& item : char_base["starting_inventory"]) {
             if (item.is_string()) {
-                std::string item_id = item.get<std::string>();
-                state.inventory[item_id]++; // По умолчанию 1
+                state.inventory[item.get<std::string>()]++;
             }
             else if (item.is_object()) {
                 std::string item_id = item["id"].get<std::string>();
