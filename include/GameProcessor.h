@@ -48,16 +48,13 @@ private:
     void InitializeNewGame();
     void StartNewGame();
     void FullReset();
-    void UseInventoryItemInCombat();
-    void ShowInventory();
-    void AddItemToInventory(const std::string& item_id);
-    void RemoveItemFromInventory(const std::string& item_id);
-    bool HasItem(const std::string& item_id) const;
     void UseItemOutsideCombat();
     void UseCombatInventory();
     void ApplyInventoryItemEffects(const std::string& item_id, const nlohmann::json& item_data);
-
-
+    void AddItemToInventory(const std::string& item_id, int count = 1);
+    void RemoveItemFromInventory(const std::string& item_id, int count = 1);
+    bool HasItem(const std::string& item_id, int count = 1) const;
+    void ShowInventory();
 
 
     DataManager& data_;

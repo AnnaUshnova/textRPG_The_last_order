@@ -42,5 +42,31 @@
     "health": "endurance * 2",
     "willpower": "intelligence * 2"
   },
-  "starting_inventory": [ "lasgun", "knife", "detonator", "melta_charge", "frag_grenade", "medkit" ]
+
+  "starting_inventory": [
+    {
+      "id": "lasgun",
+      "count": 1
+    },
+    {
+      "id": "knife",
+      "count": 1
+    },
+    {
+      "id": "detonator",
+      "count": 1
+    },
+    {
+      "id": "melta_charge",
+      "count": 2
+    },
+    {
+      "id": "frag_grenade",
+      "count": 3
+    },
+    {
+      "id": "medkit",
+      "count": 2
+    }
+  ]
 }

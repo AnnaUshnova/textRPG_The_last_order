@@ -19,7 +19,7 @@ struct GameState {
     int stat_points = 0;
     std::unordered_map<std::string, int> stats;
     std::unordered_map<std::string, int> derived_stats;
-    std::vector<std::string> inventory;
+    std::unordered_map<std::string, int> inventory; // item_id -> количество
     std::unordered_map<std::string, bool> flags;
     std::unordered_set<std::string> unlocked_endings; // Только концовки как достижения
     bool quit_game = false;

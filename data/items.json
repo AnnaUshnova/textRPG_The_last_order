@@ -23,6 +23,7 @@
     "name": "Граната",
     "name_length": 7,
     "type": "consumable",
+    "consumable": true,
     "action_name": "Метание гранаты",
     "damage": "3d6",
     "results": {
@@ -34,6 +35,7 @@
     "name": "Аптечка",
     "name_length": 7,
     "type": "consumable",
+    "consumable": true,
     "action_name": "Использовать мед-пакет",
     "results": {
       "success": "Вы восстанавливаете здоровье"

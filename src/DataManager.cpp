@@ -134,12 +134,19 @@ void DataManager::ResetGameState(GameState& state) {
     state.inventory.clear();
     state.visited_scenes.clear();
 
-    // Загрузка начального инвентаря - ДОБАВЛЕНО ПОДТВЕРЖДЕНИЕ ЗАГРУЗКИ
+    // Загрузка начального инвентаря
+    state.inventory.clear();
     if (char_base.contains("starting_inventory")) {
-        state.inventory = char_base["starting_inventory"].get<std::vector<std::string>>();
-        std::cout << "DEBUG: Loaded " << state.inventory.size() << " starting items\n";
-    }
-    else {
-        std::cerr << "WARNING: No starting inventory found in character_base.json\n";
+        for (const auto& item : char_base["starting_inventory"]) {
+            if (item.is_string()) {
+                std::string item_id = item.get<std::string>();
+                state.inventory[item_id]++; // По умолчанию 1
+            }
+            else if (item.is_object()) {
+                std::string item_id = item["id"].get<std::string>();
+                int count = item.value("count", 1);
+                state.inventory[item_id] += count;
+            }
+        }
     }
 }

@@ -212,12 +212,18 @@ bool GameProcessor::EvaluateCondition(const std::string& condition) {
         return flag_value;
     }
 
-    // Проверка наличия предмета
+    // Проверка наличия предмета с количеством
     if (condition.find("has_item.") == 0) {
-        std::string item_id = condition.substr(9);
-        return std::find(state_.inventory.begin(),
-            state_.inventory.end(),
-            item_id) != state_.inventory.end();
+        size_t dot_pos = condition.find('.', 9);
+        if (dot_pos != std::string::npos) {
+            std::string item_id = condition.substr(9, dot_pos - 9);
+            int required_count = std::stoi(condition.substr(dot_pos + 1));
+            return HasItem(item_id, required_count);
+        }
+        else {
+            std::string item_id = condition.substr(9);
+            return HasItem(item_id, 1);
+        }
     }
 
     // Проверка значения характеристики
@@ -557,31 +563,18 @@ void GameProcessor::FullReset() {
     state_.current_scene = "main_menu";
 }
 
-void GameProcessor::AddItemToInventory(const std::string& item_id) {
-    state_.inventory.push_back(item_id);
-}
-
-void GameProcessor::RemoveItemFromInventory(const std::string& item_id) {
-    auto it = std::find(state_.inventory.begin(), state_.inventory.end(), item_id);
-    if (it != state_.inventory.end()) {
-        state_.inventory.erase(it);
-    }
-}
-
-bool GameProcessor::HasItem(const std::string& item_id) const {
-    return std::find(state_.inventory.begin(), state_.inventory.end(), item_id) != state_.inventory.end();
-}
-
 void GameProcessor::UseItemOutsideCombat() {
     const auto& items_data = data_.Get("items");
-    std::vector<std::string> usable_items;
+    std::vector<std::pair<std::string, int>> usable_items;
 
     // Собираем предметы, которые можно использовать
-    for (const auto& item_id : state_.inventory) {
+    for (const auto& [item_id, count] : state_.inventory) {
         if (items_data.contains(item_id)) {
             const auto& item = items_data[item_id];
-            if (item.contains("effects") && item["type"] == "consumable") {
-                usable_items.push_back(item_id);
+            // Исправлено условие: используем логическое И (&&) вместо побитового И (&)
+            if (item.contains("effects") &&
+                item.value("type", "") == "consumable") {
+                usable_items.push_back({ item_id, count });
             }
         }
     }
@@ -593,14 +586,19 @@ void GameProcessor::UseItemOutsideCombat() {
 
     std::cout << "\nИспользовать предмет:\n";
     for (size_t i = 0; i < usable_items.size(); i++) {
-        const auto& item = items_data[usable_items[i]];
-        std::cout << (i + 1) << ". " << item["name"].get<std::string>() << "\n";
+        const auto& item = items_data[usable_items[i].first];
+        std::cout << (i + 1) << ". " << item["name"].get<std::string>();
+        if (usable_items[i].second > 1) {
+            std::cout << " (x" << usable_items[i].second << ")";
+        }
+        std::cout << "\n";
     }
     std::cout << "0. Отмена\n";
 
-    int choice = rpg_utils::Input::GetInt(0, usable_items.size());
+    // Исправленный вызов GetInt с двумя аргументами
+    int choice = rpg_utils::Input::GetInt(0, static_cast<int>(usable_items.size()));
     if (choice > 0) {
-        const std::string& item_id = usable_items[choice - 1];
+        const std::string& item_id = usable_items[choice - 1].first;
         const auto& item = items_data[item_id];
 
         // Применяем эффекты
@@ -608,12 +606,9 @@ void GameProcessor::UseItemOutsideCombat() {
             ApplyGameEffects(item["effects"]);
         }
 
-        // Удаляем предмет
-        auto it = std::find(state_.inventory.begin(), state_.inventory.end(), item_id);
-        if (it != state_.inventory.end()) {
-            state_.inventory.erase(it);
-            std::cout << "Предмет использован\n";
-        }
+        // Удаляем один предмет
+        RemoveItemFromInventory(item_id, 1);
+        std::cout << "Предмет использован\n";
     }
 }
 
@@ -646,7 +641,7 @@ void GameProcessor::InitializeCharacter() {
     // Вывод описаний характеристик
     std::cout << "\n===== ОПИСАНИЕ ХАРАКТЕРИСТИК =====\n";
     for (const auto& stat : core_stats) {
-        if (!descriptions.count(stat)) {
+        if (descriptions.find(stat) == descriptions.end()) {
             std::cerr << "Предупреждение: отсутствует описание для '" << stat << "'\n";
             continue;
         }
@@ -697,74 +692,29 @@ void GameProcessor::InitializeCharacter() {
     std::cout << "\nПерсонаж успешно создан!\n";
     std::cout << "Здоровье: " << state_.current_health << "/" << state_.max_health << "\n\n";
 
-    // Загрузка начального инвентаря - ОБЕСПЕЧИВАЕМ НАДЕЖНУЮ ЗАГРУЗКУ
-    const auto& char_base_inv = data_.Get("character_base");
-    if (char_base_inv.contains("starting_inventory")) {
-        state_.inventory = char_base_inv["starting_inventory"].get<std::vector<std::string>>();
-        std::cout << "DEBUG: Loaded " << state_.inventory.size() << " starting items\n";
+    // Загрузка начального инвентаря - ИСПРАВЛЕННАЯ ЧАСТЬ
+    if (char_base.contains("starting_inventory")) {
+        for (const auto& item : char_base["starting_inventory"]) {
+            // Проверяем тип элемента перед обработкой
+            if (item.is_object() && item.contains("id")) {
+                std::string item_id = item["id"].get<std::string>();
+                int count = item.value("count", 1);
+
+                // Используем метод добавления с проверкой
+                if (!item_id.empty()) {
+                    AddItemToInventory(item_id, count);
+                }
+            }
+        }
     }
 
     // Показ инвентаря после создания персонажа
-    ShowInventory();  // ВЫЗЫВАЕМ ФУНКЦИЮ ПОКАЗА ИНВЕНТАРЯ
+    ShowInventory();
 
     // Переход к игровому процессу
     state_.current_scene = "scene7";
 
-    // Для новой системы сохранений: НЕ сохраняем состояние игры,
-    // сохраняются только концовки при их получении
     std::cout << "Персонаж создан. Прогресс не сохраняется, сохраняются только концовки.\n";
-}
-
-void GameProcessor::ShowInventory() {
-    std::cout << "\n===== ВАШ ИНВЕНТАРЬ =====\n";
-
-    // Отладочная информация
-    std::cout << "DEBUG: Inventory size = " << state_.inventory.size() << "\n";
-
-    if (state_.inventory.empty()) {
-        std::cout << "Инвентарь пуст\n";
-        std::cout << "=======================\n";
-        return;
-    }
-
-    // Группировка предметов по ID
-    std::unordered_map<std::string, int> item_counts;
-    const auto& items_data = data_.Get("items");
-
-    // Проверка загрузки данных о предметах
-    if (items_data.empty()) {
-        std::cout << "ОШИБКА: Данные о предметах не загружены!\n";
-        std::cout << "=======================\n";
-        return;
-    }
-
-    for (const auto& item_id : state_.inventory) {
-        if (items_data.contains(item_id)) {
-            item_counts[item_id]++;
-        }
-        else {
-            std::cerr << "WARNING: Item not found: " << item_id << "\n";
-        }
-    }
-
-    // Если после фильтрации ничего не осталось
-    if (item_counts.empty()) {
-        std::cout << "Инвентарь содержит неизвестные предметы\n";
-        std::cout << "=======================\n";
-        return;
-    }
-
-    // Отображение предметов
-    for (const auto& [item_id, count] : item_counts) {
-        const auto& item = items_data[item_id];
-        std::cout << "- " << item["name"].get<std::string>()
-            << " (x" << count << ")\n";
-
-        if (item.contains("description")) {
-            std::cout << "  Описание: " << item["description"].get<std::string>() << "\n";
-        }
-    }
-    std::cout << "=======================\n";
 }
 
 void GameProcessor::ProcessScene(const std::string& scene_id) {
@@ -1103,13 +1053,12 @@ void GameProcessor::UseCombatInventory() {
     const auto& items_data = data_.Get("items");
 
     // Собираем только consumable-предметы
-    std::unordered_map<std::string, int> usable_items;
-    for (const auto& item_id : state_.inventory) {
+    std::vector<std::pair<std::string, int>> usable_items;
+    for (const auto& [item_id, count] : state_.inventory) {
         if (items_data.contains(item_id)) {
             const auto& item = items_data[item_id];
-            // ФИЛЬТРУЕМ ТОЛЬКО CONSUMABLE ПРЕДМЕТЫ
             if (item.contains("type") && item["type"].get<std::string>() == "consumable") {
-                usable_items[item_id]++;
+                usable_items.push_back({ item_id, count });
             }
         }
     }
@@ -1160,15 +1109,6 @@ void GameProcessor::UseCombatInventory() {
 
     // Применяем эффекты предмета
     ApplyInventoryItemEffects(item_id, item_data);
-
-    // Удаляем предмет, если он расходуемый
-    if (item_data.contains("consumable") && item_data["consumable"].get<bool>()) {
-        auto it = std::find(state_.inventory.begin(), state_.inventory.end(), item_id);
-        if (it != state_.inventory.end()) {
-            state_.inventory.erase(it);
-            std::cout << "Предмет использован\n";
-        }
-    }
 
     // Передаем ход противнику
     state_.combat.player_turn = false;
@@ -1227,4 +1167,64 @@ void GameProcessor::ApplyInventoryItemEffects(const std::string& item_id, const 
     if (!effect_applied) {
         std::cout << "Предмет не дал эффекта!\n";
     }
+
+    // Удаление использованного предмета
+    if (item_data.contains("consumable") && item_data["consumable"].get<bool>()) {
+        // ЗАМЕНА: используем map::find вместо std::find
+        auto it = state_.inventory.find(item_id);
+        if (it != state_.inventory.end()) {
+            // Уменьшаем количество или удаляем предмет
+            if (it->second > 1) {
+                it->second--;
+            }
+            else {
+                state_.inventory.erase(it);
+            }
+            std::cout << "Предмет использован (осталось: "
+                << (state_.inventory.count(item_id) ? state_.inventory[item_id] : 0) << ")\n";
+        }
+    }
+}
+
+// Добавление предмета(ов)
+void GameProcessor::AddItemToInventory(const std::string& item_id, int count) {
+    state_.inventory[item_id] += count;
+}
+// Удаление предмета(ов)
+void GameProcessor::RemoveItemFromInventory(const std::string& item_id, int count) {
+    if (state_.inventory.find(item_id) != state_.inventory.end()) {
+        state_.inventory[item_id] -= count;
+        if (state_.inventory[item_id] <= 0) {
+            state_.inventory.erase(item_id);
+        }
+    }
+}
+// Проверка наличия предмета
+bool GameProcessor::HasItem(const std::string& item_id, int count) const {
+    auto it = state_.inventory.find(item_id);
+    return it != state_.inventory.end() && it->second >= count;
+}
+// Показать инвентарь
+void GameProcessor::ShowInventory() {
+    std::cout << "\n===== ВАШ ИНВЕНТАРЬ =====\n";
+
+    if (state_.inventory.empty()) {
+        std::cout << "Инвентарь пуст\n";
+        std::cout << "=======================\n";
+        return;
+    }
+
+    const auto& items_data = data_.Get("items");
+    for (const auto& [item_id, count] : state_.inventory) {
+        if (items_data.contains(item_id)) {
+            const auto& item = items_data[item_id];
+            std::cout << "- " << item["name"].get<std::string>()
+                << " (" << item["type"].get<std::string>() << ", x" << count << ")\n";
+
+            if (item.contains("description")) {
+                std::cout << "  Описание: " << item["description"].get<std::string>() << "\n";
+            }
+        }
+    }
+    std::cout << "=======================\n";
 }
