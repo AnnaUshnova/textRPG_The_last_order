@@ -2,6 +2,8 @@
 #pragma once
 #include <string>
 #include <vector>
+#define NOMINMAX
+#include <windows.h>
 
 namespace rpg_utils {
     std::vector<std::string> Split(const std::string& str, char delimiter);
@@ -17,6 +19,12 @@ namespace rpg_utils {
 
     RollDetails RollDiceWithModifiers(int base_value, int modifier);
     int CalculateDamage(const std::string& dice_formula);
+
+    // Функции для работы с цветом
+    void SetConsoleColor(int color);
+    void ResetConsoleColor();
+    void SetWhiteText();
+    void SetGreenText();
 
     class Input {
     public:

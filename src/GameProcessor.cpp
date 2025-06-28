@@ -11,30 +11,37 @@ GameProcessor::GameProcessor(DataManager& data, GameState& state)
 void GameProcessor::ShowEnding(const std::string& ending_id) {
     const auto& endings = data_.Get("endings");
     if (!endings.contains(ending_id)) {
+        rpg_utils::SetGreenText();
         std::cerr << "Концовка не найдена: " << ending_id << std::endl;
         state_.current_scene = "main_menu";
+        rpg_utils::ResetConsoleColor();
         return;
     }
 
     const auto& ending = endings[ending_id];
 
+    rpg_utils::SetGreenText();
     std::cout << "\n\n========================================\n"
         << "           ИГРА ОКОНЧЕНА!               \n"
         << "========================================\n\n";
 
     if (ending.contains("title")) {
+        rpg_utils::SetGreenText();
         std::cout << "  » " << ending["title"].get<std::string>() << " «\n\n";
     }
 
     if (ending.contains("text")) {
+        rpg_utils::SetWhiteText();
         std::cout << ending["text"].get<std::string>() << "\n\n";
     }
 
     if (ending.contains("achievement")) {
+        rpg_utils::SetGreenText();
         std::cout << "----------------------------------------\n"
             << "Достижение: " << ending["achievement"].get<std::string>() << "\n";
     }
 
+    rpg_utils::SetGreenText();
     std::cout << "========================================\n\n";
 
     if (state_.unlocked_endings.find(ending_id) == state_.unlocked_endings.end()) {
@@ -42,14 +49,17 @@ void GameProcessor::ShowEnding(const std::string& ending_id) {
         data_.SaveGameState("save.json", state_);
     }
 
+    rpg_utils::SetGreenText();
     std::cout << "Нажмите Enter, чтобы продолжить...";
     rpg_utils::Input::GetLine();
     state_.current_scene = "main_menu";
+    rpg_utils::ResetConsoleColor();
 }
 
 void GameProcessor::ShowEndingCollection() {
     const auto& endings = data_.Get("endings");
 
+    rpg_utils::SetGreenText();
     if (state_.unlocked_endings.empty()) {
         std::cout << "\nВы пока не получили ни одной концовки!\n"
             << "Пройдите игру, чтобы открыть достижения.\n";
@@ -69,8 +79,10 @@ void GameProcessor::ShowEndingCollection() {
         for (const auto& ending_id : sorted_endings) {
             if (endings.contains(ending_id)) {
                 const auto& ending = endings[ending_id];
+                rpg_utils::SetWhiteText();
                 std::cout << index++ << ". " << ending["title"].get<std::string>();
                 if (ending.contains("achievement")) {
+                    rpg_utils::SetGreenText();
                     std::cout << " («" << ending["achievement"].get<std::string>() << "»)";
                 }
                 std::cout << "\n";
@@ -78,8 +90,10 @@ void GameProcessor::ShowEndingCollection() {
         }
     }
 
+    rpg_utils::SetGreenText();
     std::cout << "\nНажмите Enter, чтобы вернуться...";
     rpg_utils::Input::GetLine();
+    rpg_utils::ResetConsoleColor();
 }
 
 void GameProcessor::CalculateDerivedStats() {
@@ -96,8 +110,10 @@ void GameProcessor::CalculateDerivedStats() {
 
 void GameProcessor::ProcessCheck(const nlohmann::json& check_data) {
     if (!check_data.contains("type")) {
+        rpg_utils::SetGreenText();
         std::cerr << "Ошибка: проверка не содержит типа\n";
         state_.current_scene = "main_menu";
+        rpg_utils::ResetConsoleColor();
         return;
     }
 
@@ -106,6 +122,8 @@ void GameProcessor::ProcessCheck(const nlohmann::json& check_data) {
     const int base_value = state_.stats.at(stat);
 
     auto roll = rpg_utils::RollDiceWithModifiers(base_value, difficulty);
+
+    rpg_utils::SetGreenText();
     std::cout << "\nПроверка " << stat << " (" << base_value << "): "
         << roll.total_roll << " [Сложность: " << difficulty << "]\n";
 
@@ -179,8 +197,10 @@ void GameProcessor::ProcessCheck(const nlohmann::json& check_data) {
             state_.current_scene = check_data["next_scene"].get<std::string>();
         }
         else {
+            rpg_utils::SetGreenText();
             std::cerr << "WARNING: No valid result found for check, using main menu\n";
             state_.current_scene = "main_menu";
+            rpg_utils::ResetConsoleColor();
         }
     }
 }
@@ -261,15 +281,21 @@ void GameProcessor::HandleAutoAction(const std::string& action) {
     }
     else if (action == "reset_state") {
         data_.ResetGameState(state_);
+        rpg_utils::SetGreenText();
         std::cout << "\nИгра сброшена к начальному состоянию\n";
+        rpg_utils::ResetConsoleColor();
     }
     else if (action == "load_game") {
         data_.LoadGameState("save.json", state_);
+        rpg_utils::SetGreenText();
         std::cout << "\nИгра загружена\n";
+        rpg_utils::ResetConsoleColor();
     }
     else if (action == "save_game") {
         data_.SaveGameState("save.json", state_);
+        rpg_utils::SetGreenText();
         std::cout << "\nИгра сохранена\n";
+        rpg_utils::ResetConsoleColor();
     }
     else if (action.find("start_combat:") == 0) {
         state_.current_scene = action.substr(13);
@@ -296,8 +322,10 @@ void GameProcessor::ApplyGameEffects(const nlohmann::json& effects) {
 void GameProcessor::ProcessCombat(const std::string& combat_id) {
     const auto& combats = data_.Get("combats");
     if (!combats.contains(combat_id)) {
+        rpg_utils::SetGreenText();
         std::cerr << "Бой не найден: " << combat_id << std::endl;
         state_.current_scene = "main_menu";
+        rpg_utils::ResetConsoleColor();
         return;
     }
 
@@ -338,6 +366,7 @@ void GameProcessor::DisplayCombatStatus(const nlohmann::json& combat_data) {
     const auto& display_names = data_.Get("character_base")["display_names"];
     std::string health_name = display_names.value("health", "Здоровье");
 
+    rpg_utils::SetGreenText();
     std::cout << "\n===== БОЙ =====\n"
         << "Противник: " << enemy_name << "\n"
         << health_name << " противника: " << state_.combat.enemy_health
@@ -348,12 +377,15 @@ void GameProcessor::DisplayCombatStatus(const nlohmann::json& combat_data) {
     if (combat_data.contains("environment")) {
         std::cout << "\nОкружение:\n";
         for (const auto& env : combat_data["environment"]) {
+            rpg_utils::SetWhiteText();
             std::cout << "- " << env["name"].get<std::string>() << ": "
                 << env["effect"].get<std::string>() << "\n";
         }
     }
 
+    rpg_utils::SetGreenText();
     std::cout << "================\n";
+    rpg_utils::ResetConsoleColor();
 }
 
 void GameProcessor::ApplyCombatResults(const nlohmann::json& results) {
@@ -400,67 +432,30 @@ void GameProcessor::InitializeNewGame() {
     CalculateDerivedStats();
     state_.current_health = state_.derived_stats["health"];
     state_.max_health = state_.derived_stats["health"];
+    rpg_utils::SetGreenText();
     std::cout << "\nНовая игра начата!\n";
+    rpg_utils::ResetConsoleColor();
 }
 
 void GameProcessor::StartNewGame() {
     data_.ResetGameState(state_);
-    state_.visited_scenes.clear();  
+    state_.visited_scenes.clear();
+    rpg_utils::SetGreenText();
     std::cout << "\n===================================\n"
         << "        НОВАЯ ИГРА НАЧАТА!        \n"
         << "===================================\n\n";
+    rpg_utils::ResetConsoleColor();
 }
 
 void GameProcessor::FullReset() {
     state_ = GameState();
     std::remove("save.json");
+    rpg_utils::SetGreenText();
     std::cout << "\n===================================\n"
         << "     ПРОГРЕСС ПОЛНОСТЬЮ СБРОШЕН!    \n"
         << "===================================\n\n";
+    rpg_utils::ResetConsoleColor();
     state_.current_scene = "main_menu";
-}
-
-void GameProcessor::UseItemOutsideCombat() {
-    const auto& items_data = data_.Get("items");
-    std::vector<std::pair<std::string, int>> usable_items;
-
-    for (const auto& [item_id, count] : state_.inventory) {
-        if (items_data.contains(item_id)) {
-            const auto& item = items_data[item_id];
-            if (item.contains("effects") && item.value("type", "") == "consumable") {
-                usable_items.push_back({ item_id, count });
-            }
-        }
-    }
-
-    if (usable_items.empty()) {
-        std::cout << "Нет предметов для использования\n";
-        return;
-    }
-
-    std::cout << "\nИспользовать предмет:\n";
-    for (size_t i = 0; i < usable_items.size(); i++) {
-        const auto& item = items_data[usable_items[i].first];
-        std::cout << (i + 1) << ". " << item["name"].get<std::string>();
-        if (usable_items[i].second > 1) {
-            std::cout << " (x" << usable_items[i].second << ")";
-        }
-        std::cout << "\n";
-    }
-    std::cout << "0. Отмена\n";
-
-    int choice = rpg_utils::Input::GetInt(0, static_cast<int>(usable_items.size()));
-    if (choice > 0) {
-        const std::string& item_id = usable_items[choice - 1].first;
-        const auto& item = items_data[item_id];
-
-        if (item.contains("effects")) {
-            ApplyGameEffects(item["effects"]);
-        }
-
-        RemoveItemFromInventory(item_id, 1);
-        std::cout << "Предмет использован\n";
-    }
 }
 
 void GameProcessor::InitializeCharacter() {
@@ -471,8 +466,10 @@ void GameProcessor::InitializeCharacter() {
         !char_base.contains("display_names") ||
         !char_base.contains("descriptions"))
     {
+        rpg_utils::SetGreenText();
         std::cerr << "Ошибка: неполные данные для создания персонажа\n";
         state_.current_scene = "main_menu";
+        rpg_utils::ResetConsoleColor();
         return;
     }
 
@@ -486,13 +483,16 @@ void GameProcessor::InitializeCharacter() {
         "strength", "dexterity", "endurance", "intelligence", "melee", "ranged"
     };
 
+    rpg_utils::SetGreenText();
     std::cout << "\n===== ОПИСАНИЕ ХАРАКТЕРИСТИК =====\n";
     for (const auto& stat : core_stats) {
         if (descriptions.find(stat) == descriptions.end()) {
+            rpg_utils::SetGreenText();
             std::cerr << "Предупреждение: отсутствует описание для '" << stat << "'\n";
             continue;
         }
 
+        rpg_utils::SetGreenText();
         std::cout << display_names.at(stat) << ":\n";
         std::string desc = descriptions.at(stat);
         size_t pos = 0;
@@ -500,23 +500,28 @@ void GameProcessor::InitializeCharacter() {
             desc.replace(pos, 2, "\n");
             pos += 1;
         }
+        rpg_utils::SetWhiteText();
         std::cout << desc << "\n\n";
     }
 
     while (state_.stat_points > 0) {
+        rpg_utils::SetGreenText();
         std::cout << "\n===== СОЗДАНИЕ ПЕРСОНАЖА =====\n"
             << "Осталось очков: " << state_.stat_points << "\n\n";
 
         for (size_t i = 0; i < core_stats.size(); i++) {
             const std::string& stat = core_stats[i];
+            rpg_utils::SetWhiteText();
             std::cout << (i + 1) << ". " << display_names.at(stat)
                 << ": " << state_.stats[stat] << "\n";
         }
 
+        rpg_utils::SetGreenText();
         std::cout << "\nВыберите характеристику (1-" << core_stats.size() << "): ";
         int stat_index = rpg_utils::Input::GetInt(1, core_stats.size()) - 1;
         const std::string& chosen_stat = core_stats[stat_index];
 
+        rpg_utils::SetGreenText();
         std::cout << "Сколько очков добавить (1-" << state_.stat_points << "): ";
         int points = rpg_utils::Input::GetInt(1, state_.stat_points);
 
@@ -528,6 +533,7 @@ void GameProcessor::InitializeCharacter() {
     state_.current_health = state_.derived_stats["health"];
     state_.max_health = state_.derived_stats["health"];
 
+    rpg_utils::SetGreenText();
     std::cout << "\nПерсонаж успешно создан!\n"
         << "Здоровье: " << state_.current_health << "/" << state_.max_health << "\n\n";
 
@@ -545,7 +551,9 @@ void GameProcessor::InitializeCharacter() {
 
     ShowInventory();
     state_.current_scene = "scene7";
+    rpg_utils::SetGreenText();
     std::cout << "Персонаж создан. Прогресс не сохраняется, сохраняются только концовки.\n";
+    rpg_utils::ResetConsoleColor();
 }
 
 void GameProcessor::ProcessScene(const std::string& scene_id) {
@@ -573,8 +581,10 @@ void GameProcessor::ProcessScene(const std::string& scene_id) {
     }
 
     if (!scene_found) {
+        rpg_utils::SetGreenText();
         std::cerr << "ERROR: Scene not found: " << scene_id << "\n";
         state_.current_scene = "main_menu";
+        rpg_utils::ResetConsoleColor();
         return;
     }
 
@@ -582,6 +592,7 @@ void GameProcessor::ProcessScene(const std::string& scene_id) {
     bool show_text = (scene_id == "main_menu") || first_visit;
 
     if (show_text && scene_data.contains("text")) {
+        rpg_utils::SetWhiteText(); // Описания сцен - белый
         if (scene_data["text"].is_array()) {
             for (const auto& line : scene_data["text"]) {
                 std::cout << line.get<std::string>() << "\n";
@@ -591,6 +602,7 @@ void GameProcessor::ProcessScene(const std::string& scene_id) {
             std::cout << scene_data["text"].get<std::string>() << "\n";
         }
         std::cout << "\n";
+        rpg_utils::ResetConsoleColor();
     }
 
     if (first_visit) {
@@ -647,17 +659,16 @@ void GameProcessor::ProcessSceneChoices(const nlohmann::json& choices) {
     if (available_choices.size() == 1) {
         const auto& choice = available_choices[0];
 
-        // Для вариантов с текстом "Дальше" и подобных
+        rpg_utils::SetGreenText(); // Действия игрока - зеленый
         if (choice.text == "Дальше" || choice.text == "Продолжить" ||
             choice.text == "Далее" || choice.text == "Next") {
             std::cout << "\n" << choice.text << " (нажмите Enter)...";
-            rpg_utils::Input::GetLine();
         }
-        // Для других вариантов показываем текст
         else {
             std::cout << "\n" << choice.text << " (нажмите Enter)...";
-            rpg_utils::Input::GetLine();
         }
+        rpg_utils::Input::GetLine();
+        rpg_utils::ResetConsoleColor();
 
         // Обработка выбора
         if (choice.data.contains("effects")) {
@@ -683,12 +694,17 @@ void GameProcessor::ProcessSceneChoices(const nlohmann::json& choices) {
     }
 
     // Стандартная обработка множественного выбора
+    rpg_utils::SetGreenText(); // Заголовок - зеленый
     std::cout << "\nВарианты действий:\n";
+
     for (const auto& choice : available_choices) {
+        rpg_utils::SetWhiteText(); // Варианты выбора - белый (описания)
         std::cout << choice.number << ". " << choice.text << "\n";
     }
 
+    rpg_utils::SetGreenText(); // Приглашение - зеленый
     std::cout << "\nВаш выбор: ";
+    rpg_utils::ResetConsoleColor();
     int selected_index = rpg_utils::Input::GetInt(1, available_choices.size());
     const auto& selected_choice = available_choices[selected_index - 1].data;
 
@@ -713,184 +729,13 @@ void GameProcessor::ProcessSceneChoices(const nlohmann::json& choices) {
     }
 }
 
-void GameProcessor::ProcessPlayerCombatTurn(const nlohmann::json& combat) {
-    const auto& options = combat["player_turn"]["options"];
-    std::cout << "\n=== ВАШ ХОД ===\n";
-
-    // Создаем список доступных действий
-    std::vector<CombatOption> combat_options;
-    int option_index = 1;
-
-    for (const auto& option : options) {
-        CombatOption co;
-        co.number = option_index++;
-        co.text = option["name"].get<std::string>();
-        co.data = option;
-        co.type = "action";
-        combat_options.push_back(co);
-        std::cout << co.number << ". " << co.text << "\n";
-    }
-
-    // Добавляем опцию использования инвентаря
-    CombatOption inventory_option;
-    inventory_option.number = option_index++;
-    inventory_option.text = "Использовать инвентарь";
-    inventory_option.type = "inventory";
-    combat_options.push_back(inventory_option);
-    std::cout << inventory_option.number << ". " << inventory_option.text << "\n";
-
-    // Получаем выбор игрока
-    std::cout << "\nВаш выбор (1-" << combat_options.size() << "): ";
-    int choice = rpg_utils::Input::GetInt(1, combat_options.size());
-    const auto& selected_option = combat_options[choice - 1];
-
-    // Обработка использования инвентаря
-    if (selected_option.type == "inventory") {
-        UseCombatInventory();
-        return;
-    }
-
-    // Обработка обычного действия
-    const auto& action = selected_option.data;
-    std::string action_type = action["type"].get<std::string>();
-    state_.string_vars["last_player_action"] = action_type;
-
-    bool success = true;
-    std::string result_key = "success";
-    int difficulty_modifier = 0;
-
-    // Если действие требует проверки характеристики
-    if (action.contains("check_stat")) {
-        const std::string stat = action["check_stat"].get<std::string>();
-        const int stat_value = state_.stats.at(stat);
-
-        // Применяем модификаторы сложности
-        if (action.contains("difficulty")) {
-            difficulty_modifier = action["difficulty"].get<int>();
-        }
-
-        // Специфические модификаторы для разных типов действий
-        if (action_type == "shoot" && state_.flags.count("close_combat") && state_.flags["close_combat"]) {
-            difficulty_modifier -= 4;  // Штраф к стрельбе в ближнем бою
-        }
-        else if (action_type == "melee" && state_.flags.count("enemy_fleeing") && state_.flags["enemy_fleeing"]) {
-            difficulty_modifier += 2;  // Штраф к ближней атаке убегающего врага
-        }
-
-        // Выполняем бросок кубика
-        auto result = rpg_utils::RollDiceWithModifiers(stat_value, difficulty_modifier);
-
-        // Определяем результат броска
-        switch (result.result) {
-        case rpg_utils::RollResultType::kCriticalSuccess:
-            result_key = "critical_success"; break;
-        case rpg_utils::RollResultType::kCriticalFail:
-            result_key = "critical_fail"; break;
-        case rpg_utils::RollResultType::kSuccess:
-            result_key = "success"; break;
-        case rpg_utils::RollResultType::kFail:
-            result_key = "fail"; break;
-        }
-
-        // Выводим информацию о броске
-        std::cout << "\nБросок " << stat << " (" << stat_value;
-        if (difficulty_modifier != 0) {
-            std::cout << (difficulty_modifier > 0 ? "+" : "") << difficulty_modifier;
-        }
-        std::cout << "): " << result.total_roll << " -> " << result_key << "\n";
-
-        // Выводим результат действия, если он указан
-        if (action.contains("results") && action["results"].contains(result_key)) {
-            std::cout << action["results"][result_key].get<std::string>() << "\n";
-        }
-
-        success = (result_key == "success" || result_key == "critical_success");
-    }
-
-    // Обработка успешного действия
-    if (success) {
-        // Применяем эффекты успеха
-        if (action.contains("on_success")) {
-            ApplyGameEffects(action["on_success"]);
-        }
-
-        // Обработка нанесения урона
-        if (action.contains("damage")) {
-            int damage = rpg_utils::CalculateDamage(action["damage"].get<std::string>());
-            state_.combat.enemy_health -= damage;
-            std::cout << "Нанесено урона: " << damage << "\n";
-        }
-
-        // Обработка исцеления (НОВОЕ)
-        if (action.contains("heal")) {
-            int heal_amount = rpg_utils::CalculateDamage(action["heal"].get<std::string>());
-            state_.current_health = std::min(state_.max_health, state_.current_health + heal_amount);
-            std::cout << "Восстановлено здоровья: " << heal_amount << "\n";
-        }
-    }
-    // Обработка неудачного действия
-    else {
-        // Применяем эффекты неудачи
-        if (action.contains("on_fail")) {
-            ApplyGameEffects(action["on_fail"]);
-        }
-    }
-
-    // Передаем ход противнику
-    state_.combat.player_turn = false;
-}
-
-void GameProcessor::UseCombatInventory() {
-    const auto& items_data = data_.Get("items");
-    std::vector<std::pair<std::string, int>> usable_items;
-
-    for (const auto& [item_id, count] : state_.inventory) {
-        if (items_data.contains(item_id)) {
-            const auto& item = items_data[item_id];
-            if (item.contains("type") && item["type"].get<std::string>() == "consumable") {
-                usable_items.push_back({ item_id, count });
-            }
-        }
-    }
-
-    if (usable_items.empty()) {
-        std::cout << "\nУ вас нет расходников!\n";
-        state_.combat.player_turn = true;
-        return;
-    }
-
-    std::cout << "\n===== ВАШ ИНВЕНТАРЬ =====\n";
-    for (size_t i = 0; i < usable_items.size(); i++) {
-        const auto& item = items_data[usable_items[i].first];
-        std::cout << (i + 1) << ". " << item["name"].get<std::string>()
-            << " (x" << usable_items[i].second << ")\n";
-
-        if (item.contains("description")) {
-            std::cout << "   Описание: " << item["description"].get<std::string>() << "\n";
-        }
-    }
-    std::cout << "0. Отмена\n"
-        << "=========================\n"
-        << "\nВыберите предмет (0 - отмена): ";
-
-    int choice = rpg_utils::Input::GetInt(0, usable_items.size());
-    if (choice == 0) {
-        state_.combat.player_turn = true;
-        return;
-    }
-
-    const std::string& item_id = usable_items[choice - 1].first;
-    const auto& item_data = items_data[item_id];
-    ApplyInventoryItemEffects(item_id, item_data);
-    state_.combat.player_turn = false;
-}
-
 void GameProcessor::ApplyInventoryItemEffects(const std::string& item_id, const nlohmann::json& item_data) {
     bool effect_applied = false;
 
     if (item_data.contains("heal")) {
         int heal_amount = rpg_utils::CalculateDamage(item_data["heal"].get<std::string>());
         state_.current_health = std::min(state_.max_health, state_.current_health + heal_amount);
+        rpg_utils::SetGreenText();
         std::cout << "Вы восстановили " << heal_amount << " здоровья!\n";
         effect_applied = true;
     }
@@ -898,6 +743,7 @@ void GameProcessor::ApplyInventoryItemEffects(const std::string& item_id, const 
     if (item_data.contains("damage")) {
         int damage = rpg_utils::CalculateDamage(item_data["damage"].get<std::string>());
         state_.combat.enemy_health -= damage;
+        rpg_utils::SetGreenText();
         std::cout << "Нанесено урона: " << damage << "!\n";
         effect_applied = true;
     }
@@ -910,6 +756,7 @@ void GameProcessor::ApplyInventoryItemEffects(const std::string& item_id, const 
         int original_value = state_.stats[stat];
 
         state_.stats[stat] += value;
+        rpg_utils::SetGreenText();
         std::cout << "Ваша " << stat << " временно увеличена на " << value << "!\n";
 
         state_.flags["item_bonus_" + item_id] = true;
@@ -926,6 +773,7 @@ void GameProcessor::ApplyInventoryItemEffects(const std::string& item_id, const 
     }
 
     if (!effect_applied) {
+        rpg_utils::SetGreenText();
         std::cout << "Предмет не дал эффекта!\n";
     }
 
@@ -938,9 +786,11 @@ void GameProcessor::ApplyInventoryItemEffects(const std::string& item_id, const 
             else {
                 state_.inventory.erase(it);
             }
+            rpg_utils::SetGreenText();
             std::cout << "Предмет использован\n";
         }
     }
+    rpg_utils::ResetConsoleColor();
 }
 
 void GameProcessor::AddItemToInventory(const std::string& item_id, int count) {
@@ -963,9 +813,12 @@ bool GameProcessor::HasItem(const std::string& item_id, int count) const {
 }
 
 void GameProcessor::ShowInventory() {
+    rpg_utils::SetGreenText();
     std::cout << "\n===== ВАШ ИНВЕНТАРЬ =====\n";
 
     if (state_.inventory.empty()) {
+        rpg_utils::SetGreenText(); // Сообщение - зеленый
+
         std::cout << "Инвентарь пуст\n";
     }
     else {
@@ -973,6 +826,7 @@ void GameProcessor::ShowInventory() {
         for (const auto& [item_id, count] : state_.inventory) {
             if (items_data.contains(item_id)) {
                 const auto& item = items_data[item_id];
+                rpg_utils::SetWhiteText();
                 std::cout << "- " << item["name"].get<std::string>()
                     << " (" << item["type"].get<std::string>() << ", x" << count << ")\n";
 
@@ -982,114 +836,9 @@ void GameProcessor::ShowInventory() {
             }
         }
     }
+    rpg_utils::SetGreenText();
     std::cout << "=======================\n";
-}
-
-void GameProcessor::ProcessEnemyCombatTurn(const nlohmann::json& combat) {
-    // Определение текущей фазы боя на основе здоровья врага
-    const auto& phases = combat["phases"];
-    int current_phase_index = -1;
-
-    // Находим последнюю фазу, где здоровье врага выше порога
-    for (int i = phases.size() - 1; i >= 0; --i) {
-        if (state_.combat.enemy_health <= phases[i]["health_threshold"].get<int>()) {
-            current_phase_index = i;
-            break;
-        }
-    }
-
-    // Если фаза не найдена, используем первую фазу
-    if (current_phase_index < 0) current_phase_index = 0;
-
-    // Проверка корректности индекса фазы
-    if (current_phase_index >= static_cast<int>(phases.size())) {
-        std::cerr << "Ошибка: недопустимый индекс фазы " << current_phase_index
-            << " при " << phases.size() << " фазах\n";
-        state_.combat.player_turn = true;
-        return;
-    }
-
-    const auto& phase = phases[current_phase_index];
-    const auto& attacks = phase["attacks"];
-
-    // Обработка отсутствия атак
-    if (!attacks.is_array() || attacks.empty()) {
-        std::cout << "\nПротивник колеблется...\n";
-        state_.combat.player_turn = true;
-        return;
-    }
-
-    // Выбор случайной атаки
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_int_distribution<size_t> dist(0, attacks.size() - 1);
-    const auto& attack = attacks[dist(gen)];
-
-    // Сохранение типа атаки для обработки поражения
-    state_.combat.last_enemy_action = attack.value("type", "unknown");
-
-    // Вывод информации об атаке
-    std::cout << "\n=== ХОД ПРОТИВНИКА ===\n";
-    if (attack.contains("description")) {
-        std::cout << attack["description"].get<std::string>() << "\n";
-    }
-
-    // Обработка защиты игрока
-    bool hit = true;
-    if (attack.contains("reaction_stat")) {
-        const std::string defense_stat = attack["reaction_stat"].get<std::string>();
-        int defense_value = state_.stats.count(defense_stat) ? state_.stats.at(defense_stat) : 0;
-
-        // Расчет модификаторов сложности
-        int difficulty_modifier = 0;
-        if (state_.flags.count("exposed") && state_.flags["exposed"]) difficulty_modifier -= 2;
-        if (state_.flags.count("in_cover") && state_.flags["in_cover"]) difficulty_modifier += 2;
-
-        // Бросок защиты
-        auto defense_roll = rpg_utils::RollDiceWithModifiers(defense_value, difficulty_modifier);
-
-        // Вывод информации о броске
-        std::cout << "Ваша защита (" << defense_value;
-        if (difficulty_modifier != 0) {
-            std::cout << (difficulty_modifier > 0 ? "+" : "") << difficulty_modifier;
-        }
-        std::cout << "): " << defense_roll.total_roll << " -> ";
-
-        // Определение результата защиты
-        if (defense_roll.result == rpg_utils::RollResultType::kCriticalSuccess ||
-            defense_roll.result == rpg_utils::RollResultType::kSuccess) {
-            std::cout << "УСПЕХ\n";
-            hit = false;
-        }
-        else {
-            std::cout << "НЕУДАЧА\n";
-            hit = true;
-        }
-    }
-
-    // Обработка попадания и урона
-    if (hit && attack.contains("damage")) {
-        int damage = rpg_utils::CalculateDamage(attack["damage"].get<std::string>());
-
-        // Учет брони
-        int armor = 0;
-        if (state_.flags.count("heavy_armor")) armor += 4;
-        else if (state_.flags.count("light_armor")) armor += 2;
-
-        damage = std::max(0, damage - armor);
-        state_.current_health = std::max(0, state_.current_health - damage);
-
-        // Вывод информации об уроне
-        std::cout << "Вы получили " << damage << " урона!";
-        if (armor > 0) std::cout << " (Броня поглотила " << armor << ")";
-        std::cout << "\n";
-    }
-    else if (!hit) {
-        std::cout << "Вы успешно уклонились от атаки!\n";
-    }
-
-    // Передача хода игроку
-    state_.combat.player_turn = true;
+    rpg_utils::ResetConsoleColor();
 }
 
 void GameProcessor::CleanupCombat(const nlohmann::json& combat_data) {
@@ -1134,7 +883,9 @@ void GameProcessor::CleanupCombat(const nlohmann::json& combat_data) {
 }
 
 void GameProcessor::HandleCombatVictory(const nlohmann::json& combat_data) {
+    rpg_utils::SetGreenText();
     std::cout << "\nПобеда!\n";
+    rpg_utils::ResetConsoleColor();
 
     if (!combat_data.contains("on_win")) {
         state_.current_scene = "main_menu";
@@ -1167,7 +918,9 @@ void GameProcessor::HandleCombatVictory(const nlohmann::json& combat_data) {
 }
 
 void GameProcessor::HandleCombatDefeat(const nlohmann::json& combat_data) {
+    rpg_utils::SetGreenText();
     std::cout << "\nПоражение!\n";
+    rpg_utils::ResetConsoleColor();
 
     if (!combat_data.contains("on_lose")) {
         state_.current_scene = "main_menu";
@@ -1203,4 +956,356 @@ void GameProcessor::HandleCombatDefeat(const nlohmann::json& combat_data) {
     else {
         state_.current_scene = "main_menu";
     }
+}
+
+void GameProcessor::ProcessPlayerCombatTurn(const nlohmann::json& combat) {
+    const auto& options = combat["player_turn"]["options"];
+
+    // Заголовок хода игрока - зеленый
+    rpg_utils::SetGreenText();
+    std::cout << "\n=== ВАШ ХОД ===\n";
+
+    // Список доступных действий
+    std::vector<CombatOption> combat_options;
+    int option_index = 1;
+
+    for (const auto& option : options) {
+        CombatOption co;
+        co.number = option_index++;
+        co.text = option["name"].get<std::string>();
+        co.data = option;
+        co.type = "action";
+        combat_options.push_back(co);
+
+        // Названия действий - белые
+        rpg_utils::SetWhiteText();
+        std::cout << co.number << ". " << co.text << "\n";
+    }
+
+    // Опция использования инвентаря - зеленая
+    CombatOption inventory_option;
+    inventory_option.number = option_index++;
+    inventory_option.text = "Использовать инвентарь";
+    inventory_option.type = "inventory";
+    combat_options.push_back(inventory_option);
+    rpg_utils::SetGreenText();
+    std::cout << inventory_option.number << ". " << inventory_option.text << "\n";
+
+    // Приглашение к выбору - зеленое
+    rpg_utils::SetGreenText();
+    std::cout << "\nВаш выбор (1-" << combat_options.size() << "): ";
+    rpg_utils::ResetConsoleColor();
+    int choice = rpg_utils::Input::GetInt(1, combat_options.size());
+    const auto& selected_option = combat_options[choice - 1];
+
+    // Обработка использования инвентаря
+    if (selected_option.type == "inventory") {
+        UseCombatInventory();
+        return;
+    }
+
+    // Обработка обычного действия
+    const auto& action = selected_option.data;
+    std::string action_type = action["type"].get<std::string>();
+    state_.string_vars["last_player_action"] = action_type;
+
+    bool success = true;
+    std::string result_key = "success";
+    int difficulty_modifier = 0;
+
+    // Если действие требует проверки характеристики
+    if (action.contains("check_stat")) {
+        const std::string stat = action["check_stat"].get<std::string>();
+        const int stat_value = state_.stats.at(stat);
+
+        // Применяем модификаторы сложности
+        if (action.contains("difficulty")) {
+            difficulty_modifier = action["difficulty"].get<int>();
+        }
+
+        // Специфические модификаторы
+        if (action_type == "shoot" && state_.flags.count("close_combat") && state_.flags["close_combat"]) {
+            difficulty_modifier -= 4;
+        }
+        else if (action_type == "melee" && state_.flags.count("enemy_fleeing") && state_.flags["enemy_fleeing"]) {
+            difficulty_modifier += 2;
+        }
+
+        // Бросок кубика
+        auto result = rpg_utils::RollDiceWithModifiers(stat_value, difficulty_modifier);
+
+        // Определяем результат броска
+        switch (result.result) {
+        case rpg_utils::RollResultType::kCriticalSuccess:
+            result_key = "critical_success"; break;
+        case rpg_utils::RollResultType::kCriticalFail:
+            result_key = "critical_fail"; break;
+        case rpg_utils::RollResultType::kSuccess:
+            result_key = "success"; break;
+        case rpg_utils::RollResultType::kFail:
+            result_key = "fail"; break;
+        }
+
+        // Информация о броске - зеленая
+        rpg_utils::SetGreenText();
+        std::cout << "\nБросок " << stat << " (" << stat_value;
+        if (difficulty_modifier != 0) {
+            std::cout << (difficulty_modifier > 0 ? "+" : "") << difficulty_modifier;
+        }
+        std::cout << "): " << result.total_roll << " -> " << result_key << "\n";
+
+        // Описание результата действия - белое
+        if (action.contains("results") && action["results"].contains(result_key)) {
+            rpg_utils::SetWhiteText();
+            std::cout << action["results"][result_key].get<std::string>() << "\n";
+        }
+
+        success = (result_key == "success" || result_key == "critical_success");
+    }
+
+    // Обработка успешного действия
+    if (success) {
+        if (action.contains("on_success")) {
+            ApplyGameEffects(action["on_success"]);
+        }
+
+        // Урон - зеленый
+        if (action.contains("damage")) {
+            int damage = rpg_utils::CalculateDamage(action["damage"].get<std::string>());
+            state_.combat.enemy_health -= damage;
+            rpg_utils::SetGreenText();
+            std::cout << "Нанесено урона: " << damage << "\n";
+        }
+
+        // Лечение - зеленый
+        if (action.contains("heal")) {
+            int heal_amount = rpg_utils::CalculateDamage(action["heal"].get<std::string>());
+            state_.current_health = std::min(state_.max_health, state_.current_health + heal_amount);
+            rpg_utils::SetGreenText();
+            std::cout << "Восстановлено здоровья: " << heal_amount << "\n";
+        }
+    }
+    // Обработка неудачного действия
+    else {
+        if (action.contains("on_fail")) {
+            ApplyGameEffects(action["on_fail"]);
+        }
+    }
+
+    rpg_utils::ResetConsoleColor();
+    state_.combat.player_turn = false;
+}
+
+void GameProcessor::ProcessEnemyCombatTurn(const nlohmann::json& combat) {
+    const auto& phases = combat["phases"];
+    int current_phase_index = -1;
+
+    // Определение текущей фазы
+    for (int i = phases.size() - 1; i >= 0; --i) {
+        if (state_.combat.enemy_health <= phases[i]["health_threshold"].get<int>()) {
+            current_phase_index = i;
+            break;
+        }
+    }
+    if (current_phase_index < 0) current_phase_index = 0;
+
+    const auto& phase = phases[current_phase_index];
+    const auto& attacks = phase["attacks"];
+
+    // Обработка отсутствия атак
+    if (!attacks.is_array() || attacks.empty()) {
+        rpg_utils::SetWhiteText();  // Сообщение о бездействии - белое
+        std::cout << "\nПротивник колеблется...\n";
+        state_.combat.player_turn = true;
+        rpg_utils::ResetConsoleColor();
+        return;
+    }
+
+    // Выбор случайной атаки
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<size_t> dist(0, attacks.size() - 1);
+    const auto& attack = attacks[dist(gen)];
+
+    state_.combat.last_enemy_action = attack.value("type", "unknown");
+
+    // Заголовок хода противника - белый
+    rpg_utils::SetWhiteText();
+    std::cout << "\n=== ХОД ПРОТИВНИКА ===\n";
+
+    // Описание атаки - белое
+    if (attack.contains("description")) {
+        std::cout << attack["description"].get<std::string>() << "\n";
+    }
+
+    // Обработка защиты игрока
+    bool hit = true;
+    if (attack.contains("reaction_stat")) {
+        const std::string defense_stat = attack["reaction_stat"].get<std::string>();
+        int defense_value = state_.stats.count(defense_stat) ? state_.stats.at(defense_stat) : 0;
+
+        int difficulty_modifier = 0;
+        if (state_.flags.count("exposed") && state_.flags["exposed"]) difficulty_modifier -= 2;
+        if (state_.flags.count("in_cover") && state_.flags["in_cover"]) difficulty_modifier += 2;
+
+        auto defense_roll = rpg_utils::RollDiceWithModifiers(defense_value, difficulty_modifier);
+
+        // Информация о защите - зеленая
+        rpg_utils::SetGreenText();
+        std::cout << "Ваша защита (" << defense_value;
+        if (difficulty_modifier != 0) {
+            std::cout << (difficulty_modifier > 0 ? "+" : "") << difficulty_modifier;
+        }
+        std::cout << "): " << defense_roll.total_roll << " -> ";
+
+        if (defense_roll.result == rpg_utils::RollResultType::kCriticalSuccess ||
+            defense_roll.result == rpg_utils::RollResultType::kSuccess) {
+            std::cout << "УСПЕХ\n";
+            hit = false;
+        }
+        else {
+            std::cout << "НЕУДАЧА\n";
+            hit = true;
+        }
+    }
+
+    // Обработка попадания и урона
+    if (hit && attack.contains("damage")) {
+        int damage = rpg_utils::CalculateDamage(attack["damage"].get<std::string>());
+
+        int armor = 0;
+        if (state_.flags.count("heavy_armor")) armor += 4;
+        else if (state_.flags.count("light_armor")) armor += 2;
+
+        damage = std::max(0, damage - armor);
+        state_.current_health = std::max(0, state_.current_health - damage);
+
+        // Сообщение об уроне - зеленое
+        rpg_utils::SetGreenText();
+        std::cout << "Вы получили " << damage << " урона!";
+        if (armor > 0) std::cout << " (Броня поглотила " << armor << ")";
+        std::cout << "\n";
+    }
+    else if (!hit) {
+        // Сообщение об уклонении - зеленое
+        rpg_utils::SetGreenText();
+        std::cout << "Вы успешно уклонились от атаки!\n";
+    }
+
+    rpg_utils::ResetConsoleColor();
+    state_.combat.player_turn = true;
+}
+
+void GameProcessor::UseCombatInventory() {
+    const auto& items_data = data_.Get("items");
+    std::vector<std::pair<std::string, int>> usable_items;
+
+    for (const auto& [item_id, count] : state_.inventory) {
+        if (items_data.contains(item_id)) {
+            const auto& item = items_data[item_id];
+            if (item.contains("type") && item["type"].get<std::string>() == "consumable") {
+                usable_items.push_back({ item_id, count });
+            }
+        }
+    }
+
+    if (usable_items.empty()) {
+        rpg_utils::SetGreenText();  // Сообщение - зеленое
+        std::cout << "\nУ вас нет расходников!\n";
+        state_.combat.player_turn = true;
+        rpg_utils::ResetConsoleColor();
+        return;
+    }
+
+    // Заголовок инвентаря - зеленый
+    rpg_utils::SetGreenText();
+    std::cout << "\n===== ВАШ ИНВЕНТАРЬ =====\n";
+
+    for (size_t i = 0; i < usable_items.size(); i++) {
+        const auto& item = items_data[usable_items[i].first];
+
+        // Название предмета - белое
+        rpg_utils::SetWhiteText();
+        std::cout << (i + 1) << ". " << item["name"].get<std::string>()
+            << " (x" << usable_items[i].second << ")\n";
+
+        // Описание предмета - белое
+        if (item.contains("description")) {
+            std::cout << "   Описание: " << item["description"].get<std::string>() << "\n";
+        }
+    }
+
+    // Подсказка выбора - зеленая
+    rpg_utils::SetGreenText();
+    std::cout << "0. Отмена\n"
+        << "=========================\n"
+        << "\nВыберите предмет (0 - отмена): ";
+    rpg_utils::ResetConsoleColor();
+
+    int choice = rpg_utils::Input::GetInt(0, usable_items.size());
+    if (choice == 0) {
+        state_.combat.player_turn = true;
+        return;
+    }
+
+    const std::string& item_id = usable_items[choice - 1].first;
+    const auto& item_data = items_data[item_id];
+    ApplyInventoryItemEffects(item_id, item_data);
+    state_.combat.player_turn = false;
+}
+
+void GameProcessor::UseItemOutsideCombat() {
+    const auto& items_data = data_.Get("items");
+    std::vector<std::pair<std::string, int>> usable_items;
+
+    for (const auto& [item_id, count] : state_.inventory) {
+        if (items_data.contains(item_id)) {
+            const auto& item = items_data[item_id];
+            if (item.contains("effects") && item.value("type", "") == "consumable") {
+                usable_items.push_back({ item_id, count });
+            }
+        }
+    }
+
+    if (usable_items.empty()) {
+        rpg_utils::SetGreenText();  // Сообщение - зеленое
+        std::cout << "Нет предметов для использования\n";
+        rpg_utils::ResetConsoleColor();
+        return;
+    }
+
+    // Заголовок - зеленый
+    rpg_utils::SetGreenText();
+    std::cout << "\nИспользовать предмет:\n";
+
+    for (size_t i = 0; i < usable_items.size(); i++) {
+        const auto& item = items_data[usable_items[i].first];
+
+        // Название предмета - белое
+        rpg_utils::SetWhiteText();
+        std::cout << (i + 1) << ". " << item["name"].get<std::string>();
+        if (usable_items[i].second > 1) {
+            std::cout << " (x" << usable_items[i].second << ")";
+        }
+        std::cout << "\n";
+    }
+
+    // Подсказка выбора - зеленая
+    rpg_utils::SetGreenText();
+    std::cout << "0. Отмена\n";
+
+    int choice = rpg_utils::Input::GetInt(0, static_cast<int>(usable_items.size()));
+    if (choice > 0) {
+        const std::string& item_id = usable_items[choice - 1].first;
+        const auto& item = items_data[item_id];
+
+        if (item.contains("effects")) {
+            ApplyGameEffects(item["effects"]);
+        }
+
+        RemoveItemFromInventory(item_id, 1);
+        rpg_utils::SetGreenText();  // Сообщение - зеленое
+        std::cout << "Предмет использован\n";
+    }
+    rpg_utils::ResetConsoleColor();
 }

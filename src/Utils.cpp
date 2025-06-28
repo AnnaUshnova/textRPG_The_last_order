@@ -119,26 +119,54 @@ namespace rpg_utils {
     int Input::GetInt(int min, int max) {
         int value;
         while (true) {
+            SetGreenText(); // Зеленый цвет для приглашения ввода
             std::cout << "> ";
+            ResetConsoleColor();
+
             std::string input;
             std::getline(std::cin, input);
 
             try {
                 value = std::stoi(input);
                 if (value >= min && value <= max) return value;
+                SetGreenText();
                 std::cout << "Введите число от " << min << " до " << max << ".\n";
+                ResetConsoleColor();
             }
             catch (...) {
+                SetGreenText();
                 std::cout << "Некорректный ввод. Введите число.\n";
+                ResetConsoleColor();
             }
         }
     }
 
     std::string Input::GetLine() {
-        std::string input;
+        SetGreenText(); // Зеленый цвет для приглашения ввода
         std::cout << "> ";
+        ResetConsoleColor();
+
+        std::string input;
         std::getline(std::cin, input);
         return input;
+    }
+
+    // Реализация функций для работы с цветом
+    void SetConsoleColor(int color) {
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(hConsole, color);
+    }
+
+    void ResetConsoleColor() {
+        SetConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+
+    void SetWhiteText() {
+        SetConsoleColor(FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+
+    void SetGreenText() {
+        SetConsoleColor(FOREGROUND_INTENSITY | FOREGROUND_GREEN);
     }
 
 }  // namespace rpg_utils
