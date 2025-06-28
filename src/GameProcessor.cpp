@@ -458,104 +458,6 @@ void GameProcessor::FullReset() {
     state_.current_scene = "main_menu";
 }
 
-void GameProcessor::InitializeCharacter() {
-    const auto& char_base = data_.Get("character_base");
-
-    if (!char_base.contains("base_stats") ||
-        !char_base.contains("points_to_distribute") ||
-        !char_base.contains("display_names") ||
-        !char_base.contains("descriptions"))
-    {
-        rpg_utils::SetGreenText();
-        std::cerr << "Ошибка: неполные данные для создания персонажа\n";
-        state_.current_scene = "main_menu";
-        rpg_utils::ResetConsoleColor();
-        return;
-    }
-
-    state_.stats = char_base["base_stats"].get<std::unordered_map<std::string, int>>();
-    state_.stat_points = char_base["points_to_distribute"].get<int>();
-
-    const auto& display_names = char_base["display_names"].get<std::unordered_map<std::string, std::string>>();
-    const auto& descriptions = char_base["descriptions"].get<std::unordered_map<std::string, std::string>>();
-
-    const std::vector<std::string> core_stats = {
-        "strength", "dexterity", "endurance", "intelligence", "melee", "ranged"
-    };
-
-    rpg_utils::SetGreenText();
-    std::cout << "\n===== ОПИСАНИЕ ХАРАКТЕРИСТИК =====\n";
-    for (const auto& stat : core_stats) {
-        if (descriptions.find(stat) == descriptions.end()) {
-            rpg_utils::SetGreenText();
-            std::cerr << "Предупреждение: отсутствует описание для '" << stat << "'\n";
-            continue;
-        }
-
-        rpg_utils::SetGreenText();
-        std::cout << display_names.at(stat) << ":\n";
-        std::string desc = descriptions.at(stat);
-        size_t pos = 0;
-        while ((pos = desc.find("\\n", pos)) != std::string::npos) {
-            desc.replace(pos, 2, "\n");
-            pos += 1;
-        }
-        rpg_utils::SetWhiteText();
-        std::cout << desc << "\n\n";
-    }
-
-    while (state_.stat_points > 0) {
-        rpg_utils::SetGreenText();
-        std::cout << "\n===== СОЗДАНИЕ ПЕРСОНАЖА =====\n"
-            << "Осталось очков: " << state_.stat_points << "\n\n";
-
-        for (size_t i = 0; i < core_stats.size(); i++) {
-            const std::string& stat = core_stats[i];
-            rpg_utils::SetWhiteText();
-            std::cout << (i + 1) << ". " << display_names.at(stat)
-                << ": " << state_.stats[stat] << "\n";
-        }
-
-        rpg_utils::SetGreenText();
-        std::cout << "\nВыберите характеристику (1-" << core_stats.size() << "): ";
-        int stat_index = rpg_utils::Input::GetInt(1, core_stats.size()) - 1;
-        const std::string& chosen_stat = core_stats[stat_index];
-
-        rpg_utils::SetGreenText();
-        std::cout << "Сколько очков добавить (1-" << state_.stat_points << "): ";
-        int points = rpg_utils::Input::GetInt(1, state_.stat_points);
-
-        state_.stats[chosen_stat] += points;
-        state_.stat_points -= points;
-    }
-
-    CalculateDerivedStats();
-    state_.current_health = state_.derived_stats["health"];
-    state_.max_health = state_.derived_stats["health"];
-
-    rpg_utils::SetGreenText();
-    std::cout << "\nПерсонаж успешно создан!\n"
-        << "Здоровье: " << state_.current_health << "/" << state_.max_health << "\n\n";
-
-    if (char_base.contains("starting_inventory")) {
-        for (const auto& item : char_base["starting_inventory"]) {
-            if (item.is_object() && item.contains("id")) {
-                std::string item_id = item["id"].get<std::string>();
-                int count = item.value("count", 1);
-                if (!item_id.empty()) {
-                    AddItemToInventory(item_id, count);
-                }
-            }
-        }
-    }
-
-    ShowInventory();
-    state_.current_scene = "scene7";
-    rpg_utils::SetGreenText();
-    std::cout << "Персонаж создан. Прогресс не сохраняется, сохраняются только концовки.\n";
-    rpg_utils::ResetConsoleColor();
-}
-
 void GameProcessor::ProcessScene(const std::string& scene_id) {
     if (scene_id.find("combat_") == 0) {
         ProcessCombat(scene_id);
@@ -1307,5 +1209,221 @@ void GameProcessor::UseItemOutsideCombat() {
         rpg_utils::SetGreenText();  // Сообщение - зеленое
         std::cout << "Предмет использован\n";
     }
+    rpg_utils::ResetConsoleColor();
+}
+
+void GameProcessor::InitializeCharacter() {
+    const auto& char_base = data_.Get("character_base");
+
+    // Проверка наличия необходимых данных
+    if (!char_base.contains("base_stats") ||
+        !char_base.contains("points_to_distribute") ||
+        !char_base.contains("display_names") ||
+        !char_base.contains("descriptions") ||
+        !char_base.contains("name_lengths"))
+    {
+        rpg_utils::SetGreenText();
+        std::cerr << "Ошибка: неполные данные для создания персонажа\n";
+        state_.current_scene = "main_menu";
+        rpg_utils::ResetConsoleColor();
+        return;
+    }
+
+    // Инициализация базовых характеристик
+    state_.stats = char_base["base_stats"].get<std::unordered_map<std::string, int>>();
+    state_.stat_points = char_base["points_to_distribute"].get<int>();
+
+    // Получение данных для отображения
+    const auto& display_names = char_base["display_names"].get<std::unordered_map<std::string, std::string>>();
+    const auto& descriptions = char_base["descriptions"].get<std::unordered_map<std::string, std::string>>();
+    const auto& name_lengths = char_base["name_lengths"].get<std::unordered_map<std::string, int>>();
+    const std::vector<std::string> core_stats = {
+        "strength", "dexterity", "endurance", "intelligence", "melee", "ranged"
+    };
+
+    // === ШАГ 1: ВЫВОД ПОДРОБНОЙ ТАБЛИЦЫ ХАРАКТЕРИСТИК ===
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+
+    rpg_utils::SetGreenText();
+    std::cout << "===== ОПИСАНИЕ ХАРАКТЕРИСТИК =====\n";
+    std::cout << "У вас есть " << state_.stat_points << " очков для распределения\n\n";
+
+    // Вывод таблицы характеристик
+    for (const auto& stat : core_stats) {
+        if (descriptions.find(stat) == descriptions.end()) continue;
+
+        // Вывод названия характеристики
+        rpg_utils::SetGreenText();
+        std::cout << "=== " << display_names.at(stat) << " ===\n";
+
+        // Вывод текущего значения
+        rpg_utils::SetWhiteText();
+        std::cout << "Текущее значение: " << state_.stats.at(stat) << "\n";
+
+        // Вывод описания
+            rpg_utils::SetWhiteText();
+            std::cout << descriptions.at(stat) << "\n";
+        
+        std::cout << "\n";
+    }
+
+    rpg_utils::SetGreenText();
+    std::cout << "Нажмите Enter, чтобы начать распределение очков...";
+
+    rpg_utils::Input::GetLine();
+
+    // === ШАГ 2: ПРОЦЕСС РАСПРЕДЕЛЕНИЯ ОЧКОВ ===
+    while (state_.stat_points > 0) {
+
+
+        // Вывод заголовка
+        rpg_utils::SetGreenText();
+        std::cout << "===== РАСПРЕДЕЛЕНИЕ ОЧКОВ =====\n";
+        std::cout << "Осталось очков: " << state_.stat_points << "\n\n";
+
+        // Рассчет максимальной длины названий в символах
+        size_t max_name_chars = 0;
+        for (const auto& stat : core_stats) {
+            if (name_lengths.count(stat)) {
+                if (name_lengths.at(stat) > max_name_chars) {
+                    max_name_chars = name_lengths.at(stat);
+                }
+            }
+        }
+
+        // Вывод таблицы характеристик для распределения
+        for (size_t i = 0; i < core_stats.size(); i++) {
+            const std::string& stat = core_stats[i];
+            rpg_utils::SetWhiteText();
+
+            // Вывод номера и названия характеристики
+            std::cout << (i + 1) << ". " << display_names.at(stat) << ":";
+
+            // Рассчет необходимых пробелов для выравнивания
+            int current_name_chars = name_lengths.count(stat) ? name_lengths.at(stat) : 0;
+            int spaces_needed = max_name_chars - current_name_chars + 4;
+
+            // Вывод пробелов для выравнивания
+            for (int s = 0; s < spaces_needed; s++) {
+                std::cout << ' ';
+            }
+
+            // Вывод значения характеристики
+            std::cout << state_.stats[stat] << "\n";
+        }
+
+        // Выбор характеристики
+        rpg_utils::SetGreenText();
+        std::cout << "\nВыберите характеристику (1-" << core_stats.size() << "): ";
+        int stat_index = rpg_utils::Input::GetInt(1, core_stats.size()) - 1;
+        const std::string& chosen_stat = core_stats[stat_index];
+
+        // Выбор количества очков
+        rpg_utils::SetGreenText();
+        std::cout << "Сколько очков добавить к '" << display_names.at(chosen_stat)
+            << "' (1-" << state_.stat_points << "): ";
+        int points = rpg_utils::Input::GetInt(1, state_.stat_points);
+
+        // Применение изменений
+        state_.stats[chosen_stat] += points;
+        state_.stat_points -= points;
+    }
+
+    // Рассчет производных характеристик
+    CalculateDerivedStats();
+    state_.current_health = state_.derived_stats["health"];
+    state_.max_health = state_.derived_stats["health"];
+
+    // === ШАГ 3: ИТОГОВАЯ ТАБЛИЦА ХАРАКТЕРИСТИК ===
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+
+    rpg_utils::SetGreenText();
+    std::cout << "===== ПЕРСОНАЖ СОЗДАН! =====\n\n";
+
+    // Рассчет максимальной длины названий в символах
+    size_t max_name_chars = 0;
+    for (const auto& stat : core_stats) {
+        if (name_lengths.count(stat)) {
+            if (name_lengths.at(stat) > max_name_chars) {
+                max_name_chars = name_lengths.at(stat);
+            }
+        }
+    }
+
+    // Вывод базовых характеристик
+    rpg_utils::SetGreenText();
+    std::cout << "БАЗОВЫЕ ХАРАКТЕРИСТИКИ:\n";
+    rpg_utils::SetWhiteText();
+    for (const auto& stat : core_stats) {
+        std::cout << "  " << display_names.at(stat) << ":";
+
+        // Рассчет необходимых пробелов для выравнивания
+        int current_name_chars = name_lengths.count(stat) ? name_lengths.at(stat) : 0;
+        int spaces_needed = max_name_chars - current_name_chars + 4;
+
+        // Вывод пробелов для выравнивания
+        for (int s = 0; s < spaces_needed; s++) {
+            std::cout << ' ';
+        }
+
+        std::cout << state_.stats[stat] << "\n";
+    }
+
+    // Вывод производных характеристик
+    rpg_utils::SetGreenText();
+    std::cout << "\nПРОИЗВОДНЫЕ ХАРАКТЕРИСТИКИ:\n";
+    rpg_utils::SetWhiteText();
+
+    // Здоровье
+    std::cout << "  Здоровье:";
+    int health_spaces = max_name_chars - name_lengths.at("health") + 4;
+    for (int s = 0; s < health_spaces; s++) {
+        std::cout << ' ';
+    }
+    std::cout << state_.current_health << "/" << state_.max_health << "\n";
+
+    // Сила воли
+    if (state_.derived_stats.count("willpower")) {
+        std::cout << "  Сила воли:";
+        int will_spaces = max_name_chars - name_lengths.at("willpower") + 4;
+        for (int s = 0; s < will_spaces; s++) {
+            std::cout << ' ';
+        }
+        std::cout << state_.derived_stats["willpower"] << "\n";
+    }
+
+    // Добавление стартового инвентаря
+    if (char_base.contains("starting_inventory")) {
+        for (const auto& item : char_base["starting_inventory"]) {
+            if (item.is_object() && item.contains("id")) {
+                std::string item_id = item["id"].get<std::string>();
+                int count = item.value("count", 1);
+                if (!item_id.empty()) {
+                    AddItemToInventory(item_id, count);
+                }
+            }
+        }
+    }
+
+    // Вывод инвентаря
+    rpg_utils::SetGreenText();
+    std::cout << "\nВАШ СТАРТОВЫЙ ИНВЕНТАРЬ:\n";
+    ShowInventory();
+
+    // Завершение создания персонажа
+    rpg_utils::SetGreenText();
+    std::cout << "\nПерсонаж успешно создан!\n";
+    std::cout << "Нажмите Enter, чтобы начать игру...";
+    rpg_utils::Input::GetLine();
+
+    state_.current_scene = "scene7";
     rpg_utils::ResetConsoleColor();
 }
