@@ -1,9 +1,14 @@
 #include "Utils.h"
+
 #include <algorithm>
 #include <cctype>
+#include <iostream>
 #include <random>
 #include <sstream>
-#include <iostream>
+#include <string>
+#include <vector>
+
+#include <Windows.h>
 
 namespace rpg_utils {
 
@@ -24,8 +29,12 @@ namespace rpg_utils {
         size_t start = 0;
         size_t end = str.length();
 
-        while (start < end && std::isspace(str[start])) start++;
-        while (end > start && std::isspace(str[end - 1])) end--;
+        while (start < end && std::isspace(str[start])) {
+            start++;
+        }
+        while (end > start && std::isspace(str[end - 1])) {
+            end--;
+        }
 
         return str.substr(start, end - start);
     }
@@ -71,8 +80,8 @@ namespace rpg_utils {
 
         return { total_roll, result };
     }
-    // Упрощенный расчет урона в стиле GURPS
-    int rpg_utils::CalculateDamage(const std::string& damage_str) {
+
+    int CalculateDamage(const std::string& damage_str) {
         // Парсинг строки формата "NdX+M" или "NdX"
         int dice_count = 0;
         int dice_sides = 0;
@@ -115,11 +124,10 @@ namespace rpg_utils {
         return total + bonus;
     }
 
-    // Input implementation
     int Input::GetInt(int min, int max) {
         int value;
         while (true) {
-            SetGreenText(); // Зеленый цвет для приглашения ввода
+            SetGreenText();  // Зеленый цвет для приглашения ввода
             std::cout << "> ";
             ResetConsoleColor();
 
@@ -128,7 +136,9 @@ namespace rpg_utils {
 
             try {
                 value = std::stoi(input);
-                if (value >= min && value <= max) return value;
+                if (value >= min && value <= max) {
+                    return value;
+                }
                 SetGreenText();
                 std::cout << "Введите число от " << min << " до " << max << ".\n";
                 ResetConsoleColor();
@@ -142,7 +152,7 @@ namespace rpg_utils {
     }
 
     std::string Input::GetLine() {
-        SetGreenText(); // Зеленый цвет для приглашения ввода
+        SetGreenText();  // Зеленый цвет для приглашения ввода
         std::cout << "> ";
         ResetConsoleColor();
 
@@ -153,8 +163,8 @@ namespace rpg_utils {
 
     // Реализация функций для работы с цветом
     void SetConsoleColor(int color) {
-        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        SetConsoleTextAttribute(hConsole, color);
+        HANDLE h_console = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(h_console, color);
     }
 
     void ResetConsoleColor() {
@@ -162,7 +172,8 @@ namespace rpg_utils {
     }
 
     void SetWhiteText() {
-        SetConsoleColor(FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+        SetConsoleColor(FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN |
+            FOREGROUND_BLUE);
     }
 
     void SetGreenText() {

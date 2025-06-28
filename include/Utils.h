@@ -1,34 +1,46 @@
 // Utils.h
-#pragma once
+#ifndef RPG_UTILS_H_
+#define RPG_UTILS_H_
+
 #include <string>
 #include <vector>
+
 #define NOMINMAX
 #include <windows.h>
 
 namespace rpg_utils {
-    std::vector<std::string> Split(const std::string& str, char delimiter);
-    std::string Trim(const std::string& str);
-    std::string ToLower(const std::string& str);
 
-    enum class RollResultType { kCriticalSuccess, kSuccess, kFail, kCriticalFail };
+	std::vector<std::string> Split(const std::string& str, char delimiter);
+	std::string Trim(const std::string& str);
+	std::string ToLower(const std::string& str);
 
-    struct RollDetails {
-        int total_roll;
-        RollResultType result;
-    };
+	enum class RollResultType {
+		kCriticalSuccess,
+		kSuccess,
+		kFail,
+		kCriticalFail
+	};
 
-    RollDetails RollDiceWithModifiers(int base_value, int modifier);
-    int CalculateDamage(const std::string& dice_formula);
+	struct RollDetails {
+		int total_roll;
+		RollResultType result;
+	};
 
-    // Функции для работы с цветом
-    void SetConsoleColor(int color);
-    void ResetConsoleColor();
-    void SetWhiteText();
-    void SetGreenText();
+	RollDetails RollDiceWithModifiers(int base_value, int modifier);
+	int CalculateDamage(const std::string& dice_formula);
 
-    class Input {
-    public:
-        static int GetInt(int min, int max);
-        static std::string GetLine();
-    };
-}
+	// Color functions
+	void SetConsoleColor(int color);
+	void ResetConsoleColor();
+	void SetWhiteText();
+	void SetGreenText();
+
+	class Input {
+	public:
+		static int GetInt(int min, int max);
+		static std::string GetLine();
+	};
+
+}  // namespace rpg_utils
+
+#endif  // RPG_UTILS_H_

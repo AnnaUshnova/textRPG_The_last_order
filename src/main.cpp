@@ -1,19 +1,23 @@
 #include "GameProcessor.h"
 #include "DataManager.h"
 #include "GameState.h"
+
 #include <iostream>
+
 #include <Windows.h>
 
 int main() {
+    // Настройка кодировки консоли для поддержки UTF-8
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 
-    // Включаем поддержку виртуальных терминалов для цветов
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    DWORD consoleMode;
-    GetConsoleMode(hConsole, &consoleMode);
-    consoleMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    SetConsoleMode(hConsole, consoleMode);
+    // Включение поддержки виртуальных терминалов для цветного вывода
+    HANDLE h_console = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD console_mode;
+    if (GetConsoleMode(h_console, &console_mode)) {
+        console_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        SetConsoleMode(h_console, console_mode);
+    }
 
     try {
         DataManager data;
@@ -24,11 +28,12 @@ int main() {
 
         GameProcessor processor(data, state);
 
+        // Основной игровой цикл
         while (!state.quit_game) {
-            // Упрощенный обработчик сцен
             processor.ProcessScene(state.current_scene);
         }
 
+        // Сохранение состояния при выходе
         data.SaveGameState("save.json", state);
     }
     catch (const std::exception& e) {
