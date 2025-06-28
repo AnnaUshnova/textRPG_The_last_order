@@ -1,13 +1,13 @@
 ﻿{
   "base_stats": {
-    "strength": 18,
-    "dexterity": 18,
-    "endurance": 18,
-    "intelligence": 18,
-    "melee": 18,
-    "ranged": 18
+    "strength": 10,
+    "dexterity": 10,
+    "endurance": 10,
+    "intelligence": 10,
+    "melee": 10,
+    "ranged": 10
   },
-  "points_to_distribute": 1,
+  "points_to_distribute": 20,
   "display_names": {
     "strength": "Сила",
     "dexterity": "Ловкость",

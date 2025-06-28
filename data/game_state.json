@@ -1,7 +1,7 @@
 {
-  "current_scene": "main_menu",
-  "health": 100,
-  "max_health": 100,
+  "current_scene": "",
+  "health": 0,
+  "max_health": 0,
   "inventory": [],
   "flags": {
     "ready_for_character_creation": false,
@@ -21,7 +21,7 @@
   "combat": {
     "current_enemy": null,
     "player_turn": true,
-    "player_health": 100,
+    "player_health": 0,
     "enemy_health": 0
   }
 
