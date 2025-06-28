@@ -1,11 +1,11 @@
 ﻿{
   "base_stats": {
-    "strength": 1,
-    "dexterity": 1,
-    "endurance": 1,
-    "intelligence": 1,
-    "melee": 1,
-    "ranged": 1
+    "strength": 18,
+    "dexterity": 18,
+    "endurance": 18,
+    "intelligence": 18,
+    "melee": 18,
+    "ranged": 18
   },
   "points_to_distribute": 1,
   "display_names": {

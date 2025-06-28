@@ -122,7 +122,7 @@
         "attacks": [
           {
             "name": "Плазменная пушка",
-            "type": "energy",
+            "type": "shoot",
             "check_stat": "ranged",
             "reaction_stat": "dexterity",
             "damage": "1d10+6",
@@ -216,19 +216,20 @@
         }
       ]
     },
-    "on_lose": {
-      "ending": {
-        "melee": "ending7",
-        "shoot": "ending8",
-        "mental": "ending9"
-      },
-      "next_scene": "main_menu"
-    },
     "on_win": {
-      "next_scene": {
+      "type": "conditional",
+      "actions": {
         "melee": "scene10_1",
         "shoot": "scene10_2",
         "grenade": "scene10_3"
+      }
+    },
+    "on_lose": {
+      "type": "conditional",
+      "actions": {
+        "melee": "ending7",
+        "shoot": "ending8",
+        "mental": "ending9"
       }
     },
     "environment": [

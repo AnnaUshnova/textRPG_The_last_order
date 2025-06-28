@@ -129,24 +129,59 @@ void GameProcessor::ProcessCheck(const nlohmann::json& check_data) {
         break;
     }
 
-    if (check_data.contains("results") && check_data["results"].contains(result_key)) {
-        state_.current_scene = check_data["results"][result_key].get<std::string>();
+    // Функция для поиска резервного результата
+    auto find_fallback_scene = [&](const std::vector<std::string>& fallbacks) {
+        for (const auto& fb : fallbacks) {
+            if (check_data.contains("results") && check_data["results"].contains(fb)) {
+                return check_data["results"][fb].get<std::string>();
+            }
+            if (check_data.contains(fb)) {
+                return check_data[fb].get<std::string>();
+            }
+        }
+        return std::string("main_menu");
+        };
+
+    // Определяем порядок поиска результатов в зависимости от типа
+    std::vector<std::string> fallback_order;
+
+    if (result_key == "critical_success") {
+        fallback_order = { "critical_success", "success", "fail", "critical_fail" };
     }
-    else if (check_data.contains(result_key)) {
-        state_.current_scene = check_data[result_key].get<std::string>();
+    else if (result_key == "critical_fail") {
+        fallback_order = { "critical_fail", "fail", "success", "critical_success" };
     }
-    else if (result_key == "critical_success" && check_data.contains("success")) {
-        state_.current_scene = check_data["success"].get<std::string>();
+    else if (result_key == "success") {
+        fallback_order = { "success", "critical_success", "fail", "critical_fail" };
     }
-    else if (result_key == "critical_fail" && check_data.contains("fail")) {
-        state_.current_scene = check_data["fail"].get<std::string>();
+    else { // fail
+        fallback_order = { "fail", "critical_fail", "success", "critical_success" };
     }
-    else if (check_data.contains("next_scene")) {
-        state_.current_scene = check_data["next_scene"].get<std::string>();
+
+    // Пытаемся найти результат в порядке приоритета
+    bool found = false;
+    for (const auto& key : fallback_order) {
+        if (check_data.contains("results") && check_data["results"].contains(key)) {
+            state_.current_scene = check_data["results"][key].get<std::string>();
+            found = true;
+            break;
+        }
+        else if (check_data.contains(key)) {
+            state_.current_scene = check_data[key].get<std::string>();
+            found = true;
+            break;
+        }
     }
-    else {
-        std::cerr << "ERROR: No next scene defined for check result: " << result_key << "\n";
-        state_.current_scene = "main_menu";
+
+    // Если ничего не найдено, используем запасной вариант
+    if (!found) {
+        if (check_data.contains("next_scene")) {
+            state_.current_scene = check_data["next_scene"].get<std::string>();
+        }
+        else {
+            std::cerr << "WARNING: No valid result found for check, using main menu\n";
+            state_.current_scene = "main_menu";
+        }
     }
 }
 
@@ -290,6 +325,8 @@ void GameProcessor::InitializeCombat(const nlohmann::json& combat_data, const st
     state_.combat.max_enemy_health = state_.combat.enemy_health;
     state_.combat.current_phase = 0;
     state_.combat.player_turn = true;
+    state_.string_vars.erase("last_player_action");
+
 }
 
 void GameProcessor::ProcessEnemyCombatTurn(const nlohmann::json& combat) {
@@ -302,82 +339,116 @@ void GameProcessor::ProcessEnemyCombatTurn(const nlohmann::json& combat) {
         }
     }
 
+    // Проверка существования фазы
+    if (current_phase_index >= phases.size()) {
+        std::cerr << "Ошибка: текущая фаза " << current_phase_index << " выходит за пределы " << phases.size() << std::endl;
+        state_.combat.player_turn = true;
+        return;
+    }
+
     const auto& attacks = phases[current_phase_index]["attacks"];
 
-    if (!attacks.empty()) {
-        static std::random_device rd;
-        static std::mt19937 gen(rd());
-        std::uniform_int_distribution<size_t> dist(0, attacks.size() - 1);
-        const auto& attack = attacks[dist(gen)];
+    // Проверка существования атак
+    if (!attacks.is_array() || attacks.empty()) {
+        std::cout << "\nПротивник колеблется...\n";
+        state_.combat.player_turn = true;
+        return;
+    }
 
-        std::cout << "\n=== ХОД ПРОТИВНИКА ===\n";
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<size_t> dist(0, attacks.size() - 1);
+    const auto& attack = attacks[dist(gen)];
+
+    // Сохраняем тип атаки врага
+    state_.combat.last_enemy_action = "unknown";
+    if (attack.contains("type") && attack["type"].is_string()) {
+        state_.combat.last_enemy_action = attack["type"].get<std::string>();
+    }
+
+    std::cout << "\n=== ХОД ПРОТИВНИКА ===\n";
+    if (attack.contains("description") && attack["description"].is_string()) {
         std::cout << attack["description"].get<std::string>() << "\n";
+    }
 
-        bool hit = true;
-        int difficulty_modifier = 0;
+    bool hit = true;
+    int difficulty_modifier = 0;
 
-        if (attack.contains("reaction_stat")) {
-            const std::string defense_stat = attack["reaction_stat"].get<std::string>();
-            const int defense_value = state_.stats.at(defense_stat);
+    // Обработка реакции игрока
+    if (attack.contains("reaction_stat") && attack["reaction_stat"].is_string()) {
+        const std::string defense_stat = attack["reaction_stat"].get<std::string>();
 
-            int attack_value = 0;
+        // Безопасный доступ к статам игрока
+        int defense_value = 0;
+        if (state_.stats.count(defense_stat)) {
+            defense_value = state_.stats.at(defense_stat);
+        }
+        else {
+            std::cerr << "Предупреждение: стата игрока '" << defense_stat << "' не найдена, используется 0\n";
+        }
+
+        int attack_value = 0;
+        if (attack.contains("check_stat")) {
             if (attack["check_stat"].is_string()) {
-                attack_value = combat["stats"][attack["check_stat"].get<std::string>()].get<int>();
+                std::string enemy_stat = attack["check_stat"].get<std::string>();
+                // Безопасный доступ к статам врага
+                if (combat["stats"].contains(enemy_stat) && combat["stats"][enemy_stat].is_number()) {
+                    attack_value = combat["stats"][enemy_stat].get<int>();
+                }
             }
             else if (attack["check_stat"].is_number()) {
                 attack_value = attack["check_stat"].get<int>();
             }
-
-            if (state_.flags.count("exposed") && state_.flags["exposed"]) {
-                difficulty_modifier -= 2;
-            }
-            if (state_.flags.count("in_cover") && state_.flags["in_cover"]) {
-                difficulty_modifier += 2;
-            }
-
-            auto defense_roll = rpg_utils::RollDiceWithModifiers(defense_value, difficulty_modifier);
-
-            std::cout << "Ваша защита (" << defense_value;
-            if (difficulty_modifier != 0) {
-                std::cout << (difficulty_modifier > 0 ? "+" : "") << difficulty_modifier;
-            }
-            std::cout << "): " << defense_roll.total_roll << " -> ";
-
-            if (defense_roll.result == rpg_utils::RollResultType::kCriticalSuccess ||
-                defense_roll.result == rpg_utils::RollResultType::kSuccess) {
-                std::cout << "УСПЕХ\n";
-                hit = false;
-            }
-            else {
-                std::cout << "НЕУДАЧА\n";
-                hit = true;
-            }
         }
 
-        if (hit && attack.contains("damage")) {
-            int damage = rpg_utils::CalculateDamage(attack["damage"].get<std::string>());
-
-            int armor = 0;
-            if (state_.flags.count("heavy_armor") && state_.flags["heavy_armor"]) {
-                armor += 4;
-            }
-            else if (state_.flags.count("light_armor") && state_.flags["light_armor"]) {
-                armor += 2;
-            }
-
-            damage = std::max(0, damage - armor);
-            state_.current_health = std::max(0, state_.current_health - damage);
-
-            std::cout << "Вы получили " << damage << " урона!";
-            if (armor > 0) std::cout << " (Броня поглотила " << armor << ")";
-            std::cout << "\n";
+        // Модификаторы сложности
+        if (state_.flags.count("exposed") && state_.flags["exposed"]) {
+            difficulty_modifier -= 2;
         }
-        else if (!hit) {
-            std::cout << "Вы успешно уклонились от атаки!\n";
+        if (state_.flags.count("in_cover") && state_.flags["in_cover"]) {
+            difficulty_modifier += 2;
+        }
+
+        auto defense_roll = rpg_utils::RollDiceWithModifiers(defense_value, difficulty_modifier);
+
+        std::cout << "Ваша защита (" << defense_value;
+        if (difficulty_modifier != 0) {
+            std::cout << (difficulty_modifier > 0 ? "+" : "") << difficulty_modifier;
+        }
+        std::cout << "): " << defense_roll.total_roll << " -> ";
+
+        if (defense_roll.result == rpg_utils::RollResultType::kCriticalSuccess ||
+            defense_roll.result == rpg_utils::RollResultType::kSuccess) {
+            std::cout << "УСПЕХ\n";
+            hit = false;
+        }
+        else {
+            std::cout << "НЕУДАЧА\n";
+            hit = true;
         }
     }
-    else {
-        std::cout << "\nПротивник колеблется...\n";
+
+    // Обработка урона
+    if (hit && attack.contains("damage") && attack["damage"].is_string()) {
+        int damage = rpg_utils::CalculateDamage(attack["damage"].get<std::string>());
+
+        int armor = 0;
+        if (state_.flags.count("heavy_armor") && state_.flags["heavy_armor"]) {
+            armor += 4;
+        }
+        else if (state_.flags.count("light_armor") && state_.flags["light_armor"]) {
+            armor += 2;
+        }
+
+        damage = std::max(0, damage - armor);
+        state_.current_health = std::max(0, state_.current_health - damage);
+
+        std::cout << "Вы получили " << damage << " урона!";
+        if (armor > 0) std::cout << " (Броня поглотила " << armor << ")";
+        std::cout << "\n";
+    }
+    else if (!hit) {
+        std::cout << "Вы успешно уклонились от атаки!\n";
     }
 
     state_.combat.player_turn = true;
@@ -411,13 +482,35 @@ void GameProcessor::ApplyCombatResults(const nlohmann::json& results) {
         ApplyGameEffects(results);
     }
 
-    if (results.contains("ending")) {
-        ShowEnding(results["ending"].get<std::string>());
-        return;
-    }
+    if (state_.combat.enemy_health <= 0) {
+        if (results.contains("on_win")) {
+            const auto& on_win = results["on_win"];
 
-    state_.current_scene = results.value("next_scene", "main_menu");
-    state_.combat = CombatState();
+            if (on_win.contains("type") && on_win["type"] == "conditional") {
+                // Исправленное получение действия
+                std::string last_action = state_.string_vars.count("last_player_action")
+                    ? state_.string_vars.at("last_player_action")
+                    : "";
+
+                if (!last_action.empty() && on_win["actions"].contains(last_action)) {
+                    state_.current_scene = on_win["actions"][last_action].get<std::string>();
+                }
+                else {
+                    state_.current_scene = on_win["actions"].begin()->get<std::string>();
+                }
+            }
+            else if (on_win.contains("next_scene")) {
+                state_.current_scene = on_win["next_scene"].get<std::string>();
+            }
+            else {
+                state_.current_scene = "main_menu";
+            }
+        }
+        else {
+            state_.current_scene = "main_menu";
+        }
+    }
+    // Удалить обработку поражения здесь, так как она перенесена в CleanupCombat
 }
 
 void GameProcessor::InitializeNewGame() {
@@ -672,6 +765,46 @@ void GameProcessor::ProcessSceneChoices(const nlohmann::json& choices) {
         return;
     }
 
+    // Упрощенный вывод для сцен с единственным вариантом типа "Дальше"
+    if (available_choices.size() == 1) {
+        const auto& choice = available_choices[0];
+
+        // Для вариантов с текстом "Дальше" и подобных
+        if (choice.text == "Дальше" || choice.text == "Продолжить" ||
+            choice.text == "Далее" || choice.text == "Next") {
+            std::cout << "\n" << choice.text << " (нажмите Enter)...";
+            rpg_utils::Input::GetLine();
+        }
+        // Для других вариантов показываем текст
+        else {
+            std::cout << "\n" << choice.text << " (нажмите Enter)...";
+            rpg_utils::Input::GetLine();
+        }
+
+        // Обработка выбора
+        if (choice.data.contains("effects")) {
+            ApplyGameEffects(choice.data["effects"]);
+        }
+
+        if (choice.data.contains("check")) {
+            ProcessCheck(choice.data["check"]);
+        }
+        else if (choice.data.contains("next_target")) {
+            state_.current_scene = choice.data["next_target"].get<std::string>();
+        }
+        else if (choice.data.contains("next_scene")) {
+            state_.current_scene = choice.data["next_scene"].get<std::string>();
+        }
+        else if (choice.data.contains("auto_action")) {
+            HandleAutoAction(choice.data["auto_action"].get<std::string>());
+        }
+        else {
+            state_.current_scene = "main_menu";
+        }
+        return;
+    }
+
+    // Стандартная обработка множественного выбора
     std::cout << "\nВарианты действий:\n";
     for (const auto& choice : available_choices) {
         std::cout << choice.number << ". " << choice.text << "\n";
@@ -703,6 +836,7 @@ void GameProcessor::ProcessSceneChoices(const nlohmann::json& choices) {
 }
 
 void GameProcessor::CleanupCombat(const nlohmann::json& combat_data) {
+    // Очистка временных бонусов от предметов
     for (auto it = state_.flags.begin(); it != state_.flags.end();) {
         if (it->first.find("item_bonus_") == 0) {
             std::string item_id = it->first.substr(11);
@@ -726,22 +860,83 @@ void GameProcessor::CleanupCombat(const nlohmann::json& combat_data) {
         }
     }
 
+    // Обработка результатов боя
     if (state_.combat.enemy_health <= 0) {
         std::cout << "\nПобеда!\n";
         if (combat_data.contains("on_win")) {
-            ApplyCombatResults(combat_data["on_win"]);
+            const auto& on_win = combat_data["on_win"];
+
+            // Всегда применяем эффекты победы
+            ApplyGameEffects(on_win);
+
+            // Обработка условных переходов
+            if (on_win.contains("type") && on_win["type"] == "conditional") {
+                std::string last_action = state_.string_vars.count("last_player_action")
+                    ? state_.string_vars.at("last_player_action")
+                    : "";
+
+                if (!last_action.empty() && on_win["actions"].contains(last_action)) {
+                    state_.current_scene = on_win["actions"][last_action].get<std::string>();
+                }
+                else if (!on_win["actions"].empty()) {
+                    state_.current_scene = on_win["actions"].begin()->get<std::string>();
+                }
+                else {
+                    state_.current_scene = "main_menu";
+                }
+            }
+            // Обработка простых переходов
+            else if (on_win.contains("next_scene")) {
+                state_.current_scene = on_win["next_scene"].get<std::string>();
+            }
+            else {
+                state_.current_scene = "main_menu";
+            }
+        }
+        else {
+            state_.current_scene = "main_menu";
         }
     }
     else {
         std::cout << "\nПоражение!\n";
-        if (combat_data.contains("on_lose") && combat_data["on_lose"].contains("ending")) {
-            ShowEnding(combat_data["on_lose"]["ending"].get<std::string>());
+        if (combat_data.contains("on_lose")) {
+            const auto& on_lose = combat_data["on_lose"];
+
+            // Всегда применяем эффекты поражения
+            ApplyGameEffects(on_lose);
+
+            // Обработка условных концовок
+            if (on_lose.contains("type") && on_lose["type"] == "conditional") {
+                std::string last_action = state_.combat.last_enemy_action;
+
+                if (!last_action.empty() && on_lose["actions"].contains(last_action)) {
+                    ShowEnding(on_lose["actions"][last_action].get<std::string>());
+                }
+                else if (!on_lose["actions"].empty()) {
+                    ShowEnding(on_lose["actions"].begin()->get<std::string>());
+                }
+                else {
+                    state_.current_scene = "main_menu";
+                }
+            }
+            // Обработка простых концовок
+            else if (on_lose.contains("ending")) {
+                ShowEnding(on_lose["ending"].get<std::string>());
+            }
+            // Обработка простых переходов
+            else if (on_lose.contains("next_scene")) {
+                state_.current_scene = on_lose["next_scene"].get<std::string>();
+            }
+            else {
+                state_.current_scene = "main_menu";
+            }
         }
         else {
             state_.current_scene = "main_menu";
         }
     }
 
+    // Сброс состояния боя
     state_.combat = CombatState();
 }
 
@@ -749,6 +944,7 @@ void GameProcessor::ProcessPlayerCombatTurn(const nlohmann::json& combat) {
     const auto& options = combat["player_turn"]["options"];
     std::cout << "\n=== ВАШ ХОД ===\n";
 
+    // Создаем список доступных действий
     std::vector<CombatOption> combat_options;
     int option_index = 1;
 
@@ -762,6 +958,7 @@ void GameProcessor::ProcessPlayerCombatTurn(const nlohmann::json& combat) {
         std::cout << co.number << ". " << co.text << "\n";
     }
 
+    // Добавляем опцию использования инвентаря
     CombatOption inventory_option;
     inventory_option.number = option_index++;
     inventory_option.text = "Использовать инвентарь";
@@ -769,15 +966,18 @@ void GameProcessor::ProcessPlayerCombatTurn(const nlohmann::json& combat) {
     combat_options.push_back(inventory_option);
     std::cout << inventory_option.number << ". " << inventory_option.text << "\n";
 
+    // Получаем выбор игрока
     std::cout << "\nВаш выбор (1-" << combat_options.size() << "): ";
     int choice = rpg_utils::Input::GetInt(1, combat_options.size());
     const auto& selected_option = combat_options[choice - 1];
 
+    // Обработка использования инвентаря
     if (selected_option.type == "inventory") {
         UseCombatInventory();
         return;
     }
 
+    // Обработка обычного действия
     const auto& action = selected_option.data;
     std::string action_type = action["type"].get<std::string>();
     state_.string_vars["last_player_action"] = action_type;
@@ -786,23 +986,28 @@ void GameProcessor::ProcessPlayerCombatTurn(const nlohmann::json& combat) {
     std::string result_key = "success";
     int difficulty_modifier = 0;
 
+    // Если действие требует проверки характеристики
     if (action.contains("check_stat")) {
         const std::string stat = action["check_stat"].get<std::string>();
         const int stat_value = state_.stats.at(stat);
 
+        // Применяем модификаторы сложности
         if (action.contains("difficulty")) {
             difficulty_modifier = action["difficulty"].get<int>();
         }
 
+        // Специфические модификаторы для разных типов действий
         if (action_type == "shoot" && state_.flags.count("close_combat") && state_.flags["close_combat"]) {
-            difficulty_modifier -= 4;
+            difficulty_modifier -= 4;  // Штраф к стрельбе в ближнем бою
         }
         else if (action_type == "melee" && state_.flags.count("enemy_fleeing") && state_.flags["enemy_fleeing"]) {
-            difficulty_modifier += 2;
+            difficulty_modifier += 2;  // Штраф к ближней атаке убегающего врага
         }
 
+        // Выполняем бросок кубика
         auto result = rpg_utils::RollDiceWithModifiers(stat_value, difficulty_modifier);
 
+        // Определяем результат броска
         switch (result.result) {
         case rpg_utils::RollResultType::kCriticalSuccess:
             result_key = "critical_success"; break;
@@ -814,33 +1019,51 @@ void GameProcessor::ProcessPlayerCombatTurn(const nlohmann::json& combat) {
             result_key = "fail"; break;
         }
 
+        // Выводим информацию о броске
         std::cout << "\nБросок " << stat << " (" << stat_value;
         if (difficulty_modifier != 0) {
             std::cout << (difficulty_modifier > 0 ? "+" : "") << difficulty_modifier;
         }
         std::cout << "): " << result.total_roll << " -> " << result_key << "\n";
 
-        if (action["results"].contains(result_key)) {
+        // Выводим результат действия, если он указан
+        if (action.contains("results") && action["results"].contains(result_key)) {
             std::cout << action["results"][result_key].get<std::string>() << "\n";
         }
 
         success = (result_key == "success" || result_key == "critical_success");
     }
 
+    // Обработка успешного действия
     if (success) {
+        // Применяем эффекты успеха
         if (action.contains("on_success")) {
             ApplyGameEffects(action["on_success"]);
         }
-        else if (action.contains("damage")) {
+
+        // Обработка нанесения урона
+        if (action.contains("damage")) {
             int damage = rpg_utils::CalculateDamage(action["damage"].get<std::string>());
             state_.combat.enemy_health -= damage;
             std::cout << "Нанесено урона: " << damage << "\n";
         }
+
+        // Обработка исцеления (НОВОЕ)
+        if (action.contains("heal")) {
+            int heal_amount = rpg_utils::CalculateDamage(action["heal"].get<std::string>());
+            state_.current_health = std::min(state_.max_health, state_.current_health + heal_amount);
+            std::cout << "Восстановлено здоровья: " << heal_amount << "\n";
+        }
     }
-    else if (action.contains("on_fail")) {
-        ApplyGameEffects(action["on_fail"]);
+    // Обработка неудачного действия
+    else {
+        // Применяем эффекты неудачи
+        if (action.contains("on_fail")) {
+            ApplyGameEffects(action["on_fail"]);
+        }
     }
 
+    // Передаем ход противнику
     state_.combat.player_turn = false;
 }
 

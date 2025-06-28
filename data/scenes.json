@@ -10,15 +10,15 @@
     "choices": [
       {
         "text": "Начать новую игру",
-        "next_target": "scene1"
+        "next_scene": "scene1"
       },
       {
         "text": "Просмотреть концовки",
-        "next_target": "show_endings"
+        "next_scene": "show_endings"
       },
       {
         "text": "Выход",
-        "next_target": "quit_game"
+        "next_scene": "quit_game"
       }
     ]
   },
@@ -35,7 +35,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_target": "scene2"
+        "next_scene": "scene2"
       }
     ]
   },
@@ -55,7 +55,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_target": "scene3"
+        "next_scene": "scene3"
       }
     ]
   },
@@ -72,7 +72,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_target": "scene4"
+        "next_scene": "scene4"
       }
     ]
   },
@@ -93,7 +93,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_target": "scene5"
+        "next_scene": "scene5"
       }
     ]
   },
@@ -117,7 +117,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_target": "scene6"
+        "next_scene": "scene6"
       }
     ]
   },
@@ -145,7 +145,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_target": "character_creation"
+        "next_scene": "character_creation"
       }
     ]
   },
@@ -222,13 +222,13 @@
         "id": "continue_to_elevator",
         "text": "Продолжить к лифту",
         "condition": "flags.mutant_defeated",
-        "next_target": "scene8"
+        "next_scene": "scene8"
       },
       {
         "id": "return_to_inspection",
         "text": "Вернуться к осмотру",
         "condition": "flags.mutant_defeated && (!flags.bodies_inspected || !flags.supplies_found)",
-        "next_target": "scene7"
+        "next_scene": "scene7"
       }
     ]
   },
@@ -283,19 +283,19 @@
         "id": "move_openly",
         "text": "Двигаться открыто",
         "condition": "flags.scene8_inspected",
-        "next_target": "ending4"
+        "next_scene": "ending4"
       },
       {
         "id": "set_trap",
         "text": "Заманить в ловушку",
         "condition": "flags.scene8_perception_critical",
-        "next_target": "scene8_trap_option"
+        "next_scene": "scene8_trap_option"
       },
       {
         "id": "return_to_choice",
         "text": "Вернуться к выбору",
         "condition": "flags.scene8_inspected",
-        "next_target": "scene8"
+        "next_scene": "scene8"
       }
     ]
   },
@@ -327,7 +327,7 @@
       {
         "id": "retreat",
         "text": "Отступить",
-        "next_target": "scene8"
+        "next_scene": "scene8"
       }
     ]
   },
@@ -393,14 +393,14 @@
     "choices": [
       {
         "text": "Начать бой",
-        "next_target": "combat_tech_heretic"
+        "next_scene": "combat_tech_heretic"
       }
     ]
   },
   "scene10_1": {
     "id": "scene10_1",
     "text": [
-      "\n\n10.1",
+      "\n\n10",
       "Клинок вонзился. Не в сталь. В стык плоти и проводов под зеркальной маской.",
       "Омерзительная черная жижа хлещет из смертельной даже для такого противника раны. Паук замирает. Его манипуляторы бессильно повисают.",
       "Ты выдергиваешь окровавленный нож. Снимаешь с себя рюкзак с мельтазарядом, который был с тобой с самого начала. Укладываешь его на кокон реактора. Бережно.",
@@ -414,14 +414,14 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_target": "scene11"
+        "next_scene": "scene11"
       }
     ]
   },
   "scene10_2": {
     "id": "scene10_2",
     "text": [
-      "\n\n10.2",
+      "\n\n10",
       "Прицел. Дрожащая рука. Спуск.",
       "Луч пробивает треснувшую маску. Входит в пульсирующую черноту.",
       "Тишина. Паук замер. Зеркало гаснет. Кабели – мертвые змеи.",
@@ -437,14 +437,14 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_target": "scene11"
+        "next_scene": "scene11"
       }
     ]
   },
   "scene10_3": {
     "id": "scene10_3",
     "text": [
-      "\n\n10.3",
+      "\n\n10",
       "Чека. Бросок.",
       "Граната – прямо под искаженное тело предателя-механикус.",
       "ВЗРЫВ! Огонь пожирает Паука. Его манипуляторы – обломки. Плоть – пепел. Осколки разлетаются по залу, срубая кабели и провода на своем пути.",
@@ -459,7 +459,7 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_target": "scene11"
+        "next_scene": "scene11"
       }
     ]
   },
@@ -475,7 +475,28 @@
     "choices": [
       {
         "text": "Дальше",
-        "next_target": "scene12"
+        "next_scene": "scene12"
+      }
+    ]
+  },
+  "scene12": {
+    "id": "scene12",
+    "text": [
+      "\n\n12",
+      "Лорд-Адмирал Кассиус Вальтер.\n",
+      "Его флагман, \"Правосудие Кадии\", выживал на последних крохах воли экипажа. Мостик – полуразрушен. Экраны – мертвы. Но он видел. Видел вспышку гибели флагмана врага. Видел, как хаоситский флот, лишившись сердца, рассыпался в панике.\n",
+      "- Они... сделали это? – хрипло пробормотал старший штурман.\n",
+      "Вальтер не ответил. Он смотрел в мертвый экран, где минуту назад пылал \"Кровавый Хор\". Его рука, залитая кровью и маслом, сжалась в кулак.\n",
+      "- Они задержали.-  Голос – как скрежет ржавого металла. - Изранили.\n",
+      "Он закрыл единственный уцелевший глаз. Вспомнил десантный модуль. Жалкую горстку штурмовиков. Последний доклад. Голос мертвеца.\n",
+      "- Умерли.- Вальтер открыл глаз.\n",
+      "Его жертва не была напрасна.\n",
+      "Неизвестного штурмовика, чье имя сгорело вместе с \"Кровавым Хором\"."
+    ],
+    "choices": [
+      {
+        "text": "Дальше",
+        "next_scene": "ending10"
       }
     ]
   },
